@@ -12,3 +12,43 @@ knitr::opts_chunk$set(echo = TRUE)
 Business Problem: Assessing credit worthiness of customers in Lending Club and their probability of defaulting.
 
 Data set: https://www.kaggle.com/wendykan/lending-club-loan-data
+
+### 1.Introduction to the Business Problem
+
+Lending Club is the world’s largest online marketplace connecting borrowers and investors.They operate at a lower cost than traditional bank lending programs and pass the savings on to borrowers in the form of lower rates and to investors in the form of solid returns.
+Source: https://www.lendingclub.com/ 
+
+THis project aims to analyse Lending Club's issued loans over 9 year period (2007-2015) and zdentify early indicators that could predict a customer's probability of defaulting. The insight obtained could help to drive differentiated credit approval process for different customer segment (e.g faster approval time, minimal security for low risk customers)
+
+<br>
+### 2.Process to solve the Business Problem
+
+We would suggest the following process
+1. Understand Lending Club Business Model & Data Set
+2. Clean the data, identify relevant attributes/columns & separate training and testing dataset
+3. Generate Hypothesis 
+4. Apply Dimensionality Reduction on Hypothesis
+5. Apply Segmentation & Classification Tree on Training Dataset
+6. Apply Algorithm on Testing Dataset (Iterate if required)
+7. Capture insights & Summarise
+
+<br>
+
+### 3.Key Summary of Data
+
+```{r eval = FALSE, echo=TRUE, comment=NA, warning=FALSE, message=FALSE,results='markup'}
+Projectdata<- read.csv(file = "Data/loan.csv", header = TRUE, sep=","))
+print(colnames(Projectdata))
+summmary(Projectdata)
+```
+<br>
+
+### 4.Dimensionality Reduction
+
+
+<br>
+### 5.Clustering and Segmentation
+
+<br>
+### 6. Results 
+
