@@ -18,9 +18,8 @@ Data set: https://www.kaggle.com/wendykan/lending-club-loan-data
 Lending Club is the world’s largest online marketplace connecting borrowers and investors.They operate at a lower cost than traditional bank lending programs and pass the savings on to borrowers in the form of lower rates and to investors in the form of solid returns.
 Source: https://www.lendingclub.com/ 
 
-THis project aims to analyse Lending Club's issued loans over 9 year period (2007-2015) and zdentify early indicators that could predict a customer's probability of defaulting. The insight obtained could help to drive differentiated credit approval process for different customer segment (e.g faster approval time, minimal security for low risk customers)
+This project aims to analyse Lending Club's issued loans over 9 year period (2007-2015) and identify early indicators that could predict a customer's probability of defaulting. The insight obtained could help to drive differentiated credit approval process for different customer segment (e.g faster approval time, minimal security for low risk customers)
 
-<br>
 ### 2.Process to solve the Business Problem
 
 We would suggest the following process:   
@@ -32,24 +31,115 @@ We would suggest the following process:
 6. Apply Algorithm on Testing Dataset (Iterate if required)    
 7. Capture insights & Summarise    
 
-<br>
+**OBoulant comments :**
+If you want to "identify early indicators that could predict a customer’s probability of defaulting", you have to identify into the dataset, a column that would "represent" the "customer’s probability of defaulting". 
+--> Do you have an idea of which column within the data could play this role ? 
 
 ### 3.Key Summary of Data
 
 ```{r eval = FALSE, echo=TRUE, comment=NA, warning=FALSE, message=FALSE,results='markup'}
-Projectdata<- read.csv(file = "Data/loan.csv", header = TRUE, sep=","))
+Projectdata<- read.csv(file = "Data/loan.csv", header = TRUE, sep=",", stringsAsFactors = FALSE)
+# OBoulant : i added the "stringsAsFactors = FALSE", because i want to look as the variables represented by character strings
 print(colnames(Projectdata))
-summmary(Projectdata)
+summary(Projectdata)
+
+
+# OBoulant comments :
+######################
+
+# You should decide what you want to do with categorial variables 
+##################################################################
+
+## 1 - term
+# Should term be represented as character strings ("36 months" and "60 months") or by 36 and 60 ? 
+unique(Projectdata$term)
+Projectdata$term <- as.factor(Projectdata$term)
+## 2 - Grades 
+unique(Projectdata$grade)
+Projectdata$grade <- as.factor(Projectdata$grade)
+## 3 - sub_grade
+unique(Projectdata$sub_grade)
+Projectdata$sub_grade <- as.factor(Projectdata$sub_grade)
+## 4 - emp_title
+unique(Projectdata$emp_title)
+head(table(Projectdata$emp_title))
+sum(Projectdata$emp_title == '') # Many blanks !
+# This field should be re-processed
+## 5 - emp_length
+unique(Projectdata$emp_length)
+Projectdata$emp_length <- as.factor(Projectdata$emp_length)
+## 6 - home_ownership
+unique(Projectdata$home_ownership)
+Projectdata$home_ownership <- as.factor(Projectdata$home_ownership)
+## 7 - home_ownership
+unique(Projectdata$verification_status)
+Projectdata$verification_status <- as.factor(Projectdata$verification_status)
+## 8 - issue_d
+unique(Projectdata$issue_d)
+Projectdata$issue_d <- as.factor(Projectdata$issue_d)
+# Maybe should be separated in issue_year and issue_month
+## 9 - loan_status
+unique(Projectdata$loan_status)
+Projectdata$loan_status <- as.factor(Projectdata$loan_status)
+## 10 - pymnt_plan
+unique(Projectdata$pymnt_plan)
+Projectdata$pymnt_plan <- as.factor(Projectdata$pymnt_plan)
+## 11 - url
+unique(Projectdata$url) # Too many modalities, keep it in character strings - Not to be used !
+## 12 - desc
+unique(Projectdata$desc) # Too many modalities, keep it in character strings - Not to be used !
+## 13 - purpose 
+unique(Projectdata$purpose)
+Projectdata$purpose <- as.factor(Projectdata$purpose)
+## 14 - title
+unique(Projectdata$title)
+# Either should be re-processed or not to be used ! Or do a word count, i don't know
+## 15 - zip_code
+unique(Projectdata$zip_code)
+Projectdata$zip_code <- as.factor(Projectdata$zip_code)
+## 16 - addr_state
+unique(Projectdata$addr_state)
+Projectdata$addr_state <- as.factor(Projectdata$addr_state)
+## 17 - earliest_cr_line
+unique(Projectdata$earliest_cr_line)
+# Some missing Data
+# Maybe should be separated into earliest_cr_line_month and earliest_cr_line_year
+Projectdata$earliest_cr_line <- as.factor(Projectdata$earliest_cr_line)
+## 18 - initial_list_status
+unique(Projectdata$initial_list_status)
+Projectdata$initial_list_status <- as.factor(Projectdata$initial_list_status)
+## 19 - last_pymnt_d
+unique(Projectdata$last_pymnt_d)
+Projectdata$last_pymnt_d <- as.factor(Projectdata$last_pymnt_d)
+# Some missing Data
+# Maybe should be separated into last_pymnt_month and last_pymnt_year
+## 20 - next_pymnt_d
+unique(Projectdata$next_pymnt_d)
+# Some missing Data
+# Maybe should be separated into next_pymnt_month and next_pymnt_year
+Projectdata$next_pymnt_d <- as.factor(Projectdata$next_pymnt_d)
+# 21 - last_credit_pull_d
+unique(Projectdata$last_credit_pull_d)
+# Some missing Data
+# Maybe should be separated into last_credit_pull_month and last_credit_pull_year
+Projectdata$last_credit_pull_d <- as.factor(Projectdata$last_credit_pull_d)
+# 22 - application_type
+unique(Projectdata$application_type)
+Projectdata$application_type <- as.factor(Projectdata$application_type)
+# 23 - verification_status_joint
+unique(Projectdata$verification_status_joint)
+Projectdata$verification_status_joint <- as.factor(Projectdata$verification_status_joint)
+
+# Result Dataset
+summary(Projectdata)
+
 ```
-<br>
 
 ### 4.Dimensionality Reduction
 
 
-<br>
 ### 5.Clustering and Segmentation
 
-<br>
 ### 6. Results 
 
 >>>>>>> 7664b6275553d5ba40165c41ff18eb644596ceb4
