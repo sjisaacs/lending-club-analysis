@@ -95,7 +95,7 @@ colnames(ProjectDataNumeric) <- c("ID", "LoanStatus", "LoanAmount", "LoanTerm", 
 ProjectDataNumeric<-na.omit(ProjectDataNumeric)
 
 #correlation matrix to explore data
-acor <- cor(ProjectDataMatrix)
+acor <- cor(ProjectDataNumeric)
 corrplot(acor, type="lower", tl.srt=45)
 
 #scale data
@@ -103,10 +103,9 @@ ProjectDataScaled<-ProjectDataNumeric
 ProjectDataScaled[,3:6]<-apply(ProjectDataNumeric[,3:6],2, function(r) {if (sd(r)!=0) res=(r-mean(r))/sd(r) else res=0*r; res})
 ProjectDataScaled[,8:11]<-apply(ProjectDataNumeric[,8:11],2, function(r) {if (sd(r)!=0) res=(r-mean(r))/sd(r) else res=0*r; res})
 
-#Consider loan grade, subgrade and interest rate separately too    
-
-#SIsaacs Questions: how to scale data?                          
-                          
+```
+       
+```{r eval = FALSE, echo=TRUE, comment=NA, warning=FALSE, message=FALSE,results='markup'}
 # OBoulant comments :
 ######################
 
@@ -261,11 +260,11 @@ knitr::kable(class_percentages)
 ```
 
 ```{r}
-knitr::kable(round(my_summary(estimation_data[estimation_data[,dependent_variable]==1,independent_variables]),2))
+#knitr::kable(round(my_summary(estimation_data[estimation_data[,dependent_variable]==1,independent_variables]),2))
 ```
 
 ```{r}
-knitr::kable(round(my_summary(estimation_data[estimation_data[,dependent_variable]==0,independent_variables]),2))
+#knitr::kable(round(my_summary(estimation_data[estimation_data[,dependent_variable]==0,independent_variables]),2))
 ```
 
 ```{r, fig.height=4.5}
