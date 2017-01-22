@@ -45,25 +45,57 @@ ProjectData<- read.csv(file = "Data/loan.csv", header = TRUE, sep=",", stringsAs
 # summary(ProjectData)
 
 ProjectDataClean <- ProjectData$id
-ProjectDataClean <- cbind(ProjectDataClean, ProjectData$loan_status, ProjectData$loan_amnt, ProjectData$term, ProjectData$annual_inc, ProjectData$emp_length, ProjectData$pub_rec, ProjectData$open_acc, ProjectData$delinq_2yrs)
-colnames(ProjectDataClean) <- c("ID", "LoanStatus", "LoanAmount", "LoanTerm", "AnnualIncome", "EmploymentLength", "PublicRecords", "NumberCreditLines", "DelinquencyPrior2Years")
+ProjectDataClean <- cbind(ProjectDataClean, ProjectData$loan_status, ProjectData$loan_amnt, ProjectData$term, ProjectData$annual_inc, ProjectData$emp_length, ProjectData$pub_rec, ProjectData$open_acc, ProjectData$delinq_2yrs, ProjectData$grade, ProjectData$int_rate)
+colnames(ProjectDataClean) <- c("ID", "LoanStatus", "LoanAmount", "LoanTerm", "AnnualIncome", "EmploymentLength", "PublicRecords", "NumberCreditLines", "DelinquencyPrior2Years", "LoanGrade", "InterestRate")
 
 #Convert the data to numbers
-for (r in ProjectDataClean[,"LoanStatus"]){
-  if (i=="Charged Off"){
-    i <- 1
-  }
-  else {
-  i <- 0
-  }
-  ProjectDataClean[r,"LoanStatus"]<-i
-}
+ProjectDataClean[,"LoanStatus"] <- replace(ProjectDataClean[,"LoanStatus"], ProjectDataClean[,"LoanStatus"]=="Charged Off", 1)
+ProjectDataClean[,"LoanStatus"] <- replace(ProjectDataClean[,"LoanStatus"], ProjectDataClean[,"LoanStatus"]=="Current", 0)
+ProjectDataClean[,"LoanStatus"] <- replace(ProjectDataClean[,"LoanStatus"], ProjectDataClean[,"LoanStatus"]=="Fully Paid", 0)
 
-#Scale the data
+ProjectDataClean[,"LoanTerm"] <- replace(ProjectDataClean[,"LoanTerm"], ProjectDataClean[,"LoanTerm"]==" 36 months", 36)
+ProjectDataClean[,"LoanTerm"] <- replace(ProjectDataClean[,"LoanTerm"], ProjectDataClean[,"LoanTerm"]==" 60 months", 60)
 
-ProjectDataClean$Loan.Amount <- ProjectDataClean$Loan.Amount - 
+ProjectDataClean[,"EmploymentLength"] <- replace(ProjectDataClean[,"EmploymentLength"], ProjectDataClean[,"EmploymentLength"]=="< 1 year", 0)
+ProjectDataClean[,"EmploymentLength"] <- replace(ProjectDataClean[,"EmploymentLength"], ProjectDataClean[,"EmploymentLength"]=="1 year", 1)
+ProjectDataClean[,"EmploymentLength"] <- replace(ProjectDataClean[,"EmploymentLength"], ProjectDataClean[,"EmploymentLength"]=="2 years", 2)
+ProjectDataClean[,"EmploymentLength"] <- replace(ProjectDataClean[,"EmploymentLength"], ProjectDataClean[,"EmploymentLength"]=="3 years", 3)
+ProjectDataClean[,"EmploymentLength"] <- replace(ProjectDataClean[,"EmploymentLength"], ProjectDataClean[,"EmploymentLength"]=="4 years", 4)
+ProjectDataClean[,"EmploymentLength"] <- replace(ProjectDataClean[,"EmploymentLength"], ProjectDataClean[,"EmploymentLength"]=="5 years", 5)
+ProjectDataClean[,"EmploymentLength"] <- replace(ProjectDataClean[,"EmploymentLength"], ProjectDataClean[,"EmploymentLength"]=="6 years", 6)
+ProjectDataClean[,"EmploymentLength"] <- replace(ProjectDataClean[,"EmploymentLength"], ProjectDataClean[,"EmploymentLength"]=="7 years", 7)
+ProjectDataClean[,"EmploymentLength"] <- replace(ProjectDataClean[,"EmploymentLength"], ProjectDataClean[,"EmploymentLength"]=="8 years", 8)
+ProjectDataClean[,"EmploymentLength"] <- replace(ProjectDataClean[,"EmploymentLength"], ProjectDataClean[,"EmploymentLength"]=="9 years", 9)
+ProjectDataClean[,"EmploymentLength"] <- replace(ProjectDataClean[,"EmploymentLength"], ProjectDataClean[,"EmploymentLength"]=="10+ years",10)
+ProjectDataClean[,"EmploymentLength"] <- replace(ProjectDataClean[,"EmploymentLength"], ProjectDataClean[,"EmploymentLength"]=="n/a",NA)
 
-#Consider loan grade, subgrade and interest rate separately too
+ProjectDataClean[,"LoanGrade"] <- replace(ProjectDataClean[,"LoanGrade"], ProjectDataClean[,"LoanGrade"]=="A",1)
+ProjectDataClean[,"LoanGrade"] <- replace(ProjectDataClean[,"LoanGrade"], ProjectDataClean[,"LoanGrade"]=="B",2)
+ProjectDataClean[,"LoanGrade"] <- replace(ProjectDataClean[,"LoanGrade"], ProjectDataClean[,"LoanGrade"]=="C",3)
+ProjectDataClean[,"LoanGrade"] <- replace(ProjectDataClean[,"LoanGrade"], ProjectDataClean[,"LoanGrade"]=="D",4)
+ProjectDataClean[,"LoanGrade"] <- replace(ProjectDataClean[,"LoanGrade"], ProjectDataClean[,"LoanGrade"]=="E",5)
+ProjectDataClean[,"LoanGrade"] <- replace(ProjectDataClean[,"LoanGrade"], ProjectDataClean[,"LoanGrade"]=="F",6)
+ProjectDataClean[,"LoanGrade"] <- replace(ProjectDataClean[,"LoanGrade"], ProjectDataClean[,"LoanGrade"]=="G",7)
+
+#convert to numeric
+ProjectDataNumeric<-matrix(as.numeric(unlist(ProjectDataClean)),nrow=nrow(ProjectDataClean))
+colnames(ProjectDataNumeric) <- c("ID", "LoanStatus", "LoanAmount", "LoanTerm", "AnnualIncome", "EmploymentLength", "PublicRecords", "NumberCreditLines", "DelinquencyPrior2Years", "LoanGrade", "InterestRate")
+
+#remove NAs
+ProjectDataNumeric<-na.omit(ProjectDataNumeric)
+
+#correlation matrix to explore data
+install.packages("corrplot")
+library("corrplot")
+acor <- cor(ProjectDataMatrix)
+corrplot(acor, type="lower", tl.srt=45)
+
+#scale data
+ProjectDataScaled<-ProjectDataNumeric
+ProjectDataScaled[,3:6]<-apply(ProjectDataNumeric[,3:6],2, function(r) {if (sd(r)!=0) res=(r-mean(r))/sd(r) else res=0*r; res})
+ProjectDataScaled[,8:11]<-apply(ProjectDataNumeric[,8:11],2, function(r) {if (sd(r)!=0) res=(r-mean(r))/sd(r) else res=0*r; res})
+
+#Consider loan grade, subgrade and interest rate separately too    
 
 #SIsaacs Questions: how to scale data?                          
                           
