@@ -16,13 +16,13 @@ Data set: https://www.kaggle.com/wendykan/lending-club-loan-data
 ### 1.Introduction to the Business Problem
 
 Lending Club is the world’s largest online marketplace connecting borrowers and investors.They operate at a lower cost than traditional bank lending programs and pass the savings on to borrowers in the form of lower rates and to investors in the form of solid returns.
-Source: https://www.lendingclub.com/ 
+Source: https://www.lendingclub.com/
 
-This project aims to analyse Lending Club's issued loans over 9 year period (2007-2015) and identify early indicators that could predict a customer's probability of defaulting. The insight obtained could help to drive differentiated credit approval process for different customer segment (e.g faster approval time, minimal security for low risk customers)
+This project aims to analyse Lending Club's issued loans over a 9 year period (2007-2015) and identify early indicators that could predict a customer's probability of defaulting. The insight obtained could help to drive differentiated credit approval processes for different customer segments (e.g faster approval time, minimal security for low risk customers).
 
 ### 2.Process to solve the Business Problem
 
-We would suggest the following process:   
+We would suggest the following process:      
 1. Understand Lending Club Business Model & Data Set    
 2. Clean the data, identify relevant attributes/columns & separate training and testing dataset    
 3. Generate Hypothesis    
@@ -33,105 +33,131 @@ We would suggest the following process:
 
 **OBoulant comments :**
 If you want to "identify early indicators that could predict a customer’s probability of defaulting", you have to identify into the dataset, a column that would "represent" the "customer’s probability of defaulting". 
---> Do you have an idea of which column within the data could play this role ? 
+--> Do you have an idea of which column within the data could play this role? ProjectData$loan_status
 
 ### 3.Key Summary of Data
 
 ```{r eval = FALSE, echo=TRUE, comment=NA, warning=FALSE, message=FALSE,results='markup'}
-Projectdata<- read.csv(file = "Data/loan.csv", header = TRUE, sep=",", stringsAsFactors = FALSE)
-# OBoulant : i added the "stringsAsFactors = FALSE", because i want to look as the variables represented by character strings
-print(colnames(Projectdata))
-summary(Projectdata)
+ProjectData<- read.csv(file = "Data/loan.csv", header = TRUE, sep=",", stringsAsFactors = FALSE, nrows=10000)
+# OBoulant : i added the "stringsAsFactors = FALSE", because I want to look at the variables represented by character strings
+# SIsaacs: I added "nrows = 10000" to work with a smaller more manageable data set
+# print(colnames(ProjectData))
+# summary(ProjectData)
 
+ProjectDataClean <- ProjectData$id
+ProjectDataClean <- cbind(ProjectDataClean, ProjectData$loan_status, ProjectData$loan_amnt, ProjectData$term, ProjectData$annual_inc, ProjectData$emp_length, ProjectData$pub_rec, ProjectData$open_acc, ProjectData$delinq_2yrs)
+colnames(ProjectDataClean) <- c("ID", "LoanStatus", "LoanAmount", "LoanTerm", "AnnualIncome", "EmploymentLength", "PublicRecords", "NumberCreditLines", "DelinquencyPrior2Years")
 
+for (r in ProjectDataClean[,"LoanStatus"]){
+  if (i=="Charged Off"){
+    i <- 1
+  }
+  else {
+  i <- 0
+  }
+  ProjectDataClean[r,"LoanStatus"]<-i
+}
+
+ProjectDataClean$Loan.Amount <- apply(ProjectDataClean, 2, function(r) {
+  if (sd(as.numeric(r)) != 0)
+    res = as.numeric(r) - mean(as.numeric(r)) / sd(as.numeric(r)) else res = 0
+  res
+})
+
+ProjectDataClean$Loan.Amount <- ProjectDataClean$Loan.Amount - 
+
+#Consider loan grade, subgrade and interest rate separately too
+
+#SIsaacs Questions: how to scale data?                          
+                          
 # OBoulant comments :
 ######################
 
-# You should decide what you want to do with categorial variables 
+# You should decide what you want to do with categorical variables 
 ##################################################################
 
 ## 1 - term
 # Should term be represented as character strings ("36 months" and "60 months") or by 36 and 60 ? 
-unique(Projectdata$term)
-Projectdata$term <- as.factor(Projectdata$term)
+unique(ProjectData$term)
+ProjectData$term <- as.factor(ProjectData$term)
 ## 2 - Grades 
-unique(Projectdata$grade)
-Projectdata$grade <- as.factor(Projectdata$grade)
+unique(ProjectData$grade)
+ProjectData$grade <- as.factor(ProjectData$grade)
 ## 3 - sub_grade
-unique(Projectdata$sub_grade)
-Projectdata$sub_grade <- as.factor(Projectdata$sub_grade)
+unique(ProjectData$sub_grade)
+ProjectData$sub_grade <- as.factor(ProjectData$sub_grade)
 ## 4 - emp_title
-unique(Projectdata$emp_title)
-head(table(Projectdata$emp_title))
-sum(Projectdata$emp_title == '') # Many blanks !
+unique(ProjectData$emp_title)
+head(table(ProjectData$emp_title))
+sum(ProjectData$emp_title == '') # Many blanks !
 # This field should be re-processed
 ## 5 - emp_length
-unique(Projectdata$emp_length)
-Projectdata$emp_length <- as.factor(Projectdata$emp_length)
+unique(ProjectData$emp_length)
+ProjectData$emp_length <- as.factor(ProjectData$emp_length)
 ## 6 - home_ownership
-unique(Projectdata$home_ownership)
-Projectdata$home_ownership <- as.factor(Projectdata$home_ownership)
+unique(ProjectData$home_ownership)
+ProjectData$home_ownership <- as.factor(ProjectData$home_ownership)
 ## 7 - home_ownership
-unique(Projectdata$verification_status)
-Projectdata$verification_status <- as.factor(Projectdata$verification_status)
+unique(ProjectData$verification_status)
+ProjectData$verification_status <- as.factor(ProjectData$verification_status)
 ## 8 - issue_d
-unique(Projectdata$issue_d)
-Projectdata$issue_d <- as.factor(Projectdata$issue_d)
+unique(ProjectData$issue_d)
+ProjectData$issue_d <- as.factor(ProjectData$issue_d)
 # Maybe should be separated in issue_year and issue_month
 ## 9 - loan_status
-unique(Projectdata$loan_status)
-Projectdata$loan_status <- as.factor(Projectdata$loan_status)
+unique(ProjectData$loan_status)
+ProjectData$loan_status <- as.factor(ProjectData$loan_status)
 ## 10 - pymnt_plan
-unique(Projectdata$pymnt_plan)
-Projectdata$pymnt_plan <- as.factor(Projectdata$pymnt_plan)
+unique(ProjectData$pymnt_plan)
+ProjectData$pymnt_plan <- as.factor(ProjectData$pymnt_plan)
 ## 11 - url
-unique(Projectdata$url) # Too many modalities, keep it in character strings - Not to be used !
+unique(ProjectData$url) # Too many modalities, keep it in character strings - Not to be used !
 ## 12 - desc
-unique(Projectdata$desc) # Too many modalities, keep it in character strings - Not to be used !
+unique(ProjectData$desc) # Too many modalities, keep it in character strings - Not to be used !
 ## 13 - purpose 
-unique(Projectdata$purpose)
-Projectdata$purpose <- as.factor(Projectdata$purpose)
+unique(ProjectData$purpose)
+ProjectData$purpose <- as.factor(ProjectData$purpose)
 ## 14 - title
-unique(Projectdata$title)
+unique(ProjectData$title)
 # Either should be re-processed or not to be used ! Or do a word count, i don't know
 ## 15 - zip_code
-unique(Projectdata$zip_code)
-Projectdata$zip_code <- as.factor(Projectdata$zip_code)
+unique(ProjectData$zip_code)
+ProjectData$zip_code <- as.factor(ProjectData$zip_code)
 ## 16 - addr_state
-unique(Projectdata$addr_state)
-Projectdata$addr_state <- as.factor(Projectdata$addr_state)
+unique(ProjectData$addr_state)
+ProjectData$addr_state <- as.factor(ProjectData$addr_state)
 ## 17 - earliest_cr_line
-unique(Projectdata$earliest_cr_line)
+unique(ProjectData$earliest_cr_line)
 # Some missing Data
 # Maybe should be separated into earliest_cr_line_month and earliest_cr_line_year
-Projectdata$earliest_cr_line <- as.factor(Projectdata$earliest_cr_line)
+ProjectData$earliest_cr_line <- as.factor(ProjectData$earliest_cr_line)
 ## 18 - initial_list_status
-unique(Projectdata$initial_list_status)
-Projectdata$initial_list_status <- as.factor(Projectdata$initial_list_status)
+unique(ProjectData$initial_list_status)
+ProjectData$initial_list_status <- as.factor(ProjectData$initial_list_status)
 ## 19 - last_pymnt_d
-unique(Projectdata$last_pymnt_d)
-Projectdata$last_pymnt_d <- as.factor(Projectdata$last_pymnt_d)
+unique(ProjectData$last_pymnt_d)
+ProjectData$last_pymnt_d <- as.factor(ProjectData$last_pymnt_d)
 # Some missing Data
 # Maybe should be separated into last_pymnt_month and last_pymnt_year
 ## 20 - next_pymnt_d
-unique(Projectdata$next_pymnt_d)
+unique(ProjectData$next_pymnt_d)
 # Some missing Data
 # Maybe should be separated into next_pymnt_month and next_pymnt_year
-Projectdata$next_pymnt_d <- as.factor(Projectdata$next_pymnt_d)
+ProjectData$next_pymnt_d <- as.factor(ProjectData$next_pymnt_d)
 # 21 - last_credit_pull_d
-unique(Projectdata$last_credit_pull_d)
+unique(ProjectData$last_credit_pull_d)
 # Some missing Data
 # Maybe should be separated into last_credit_pull_month and last_credit_pull_year
-Projectdata$last_credit_pull_d <- as.factor(Projectdata$last_credit_pull_d)
+ProjectData$last_credit_pull_d <- as.factor(ProjectData$last_credit_pull_d)
 # 22 - application_type
 unique(Projectdata$application_type)
-Projectdata$application_type <- as.factor(Projectdata$application_type)
+ProjectData$application_type <- as.factor(ProjectData$application_type)
 # 23 - verification_status_joint
-unique(Projectdata$verification_status_joint)
-Projectdata$verification_status_joint <- as.factor(Projectdata$verification_status_joint)
+unique(ProjectData$verification_status_joint)
+ProjectData$verification_status_joint <- as.factor(ProjectData$verification_status_joint)
 
 # Result Dataset
-summary(Projectdata)
+summary(ProjectData)
 
 ```
 
