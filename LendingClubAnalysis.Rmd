@@ -48,6 +48,7 @@ ProjectDataClean <- ProjectData$id
 ProjectDataClean <- cbind(ProjectDataClean, ProjectData$loan_status, ProjectData$loan_amnt, ProjectData$term, ProjectData$annual_inc, ProjectData$emp_length, ProjectData$pub_rec, ProjectData$open_acc, ProjectData$delinq_2yrs)
 colnames(ProjectDataClean) <- c("ID", "LoanStatus", "LoanAmount", "LoanTerm", "AnnualIncome", "EmploymentLength", "PublicRecords", "NumberCreditLines", "DelinquencyPrior2Years")
 
+#Convert the data to numbers
 for (r in ProjectDataClean[,"LoanStatus"]){
   if (i=="Charged Off"){
     i <- 1
@@ -58,11 +59,7 @@ for (r in ProjectDataClean[,"LoanStatus"]){
   ProjectDataClean[r,"LoanStatus"]<-i
 }
 
-ProjectDataClean$Loan.Amount <- apply(ProjectDataClean, 2, function(r) {
-  if (sd(as.numeric(r)) != 0)
-    res = as.numeric(r) - mean(as.numeric(r)) / sd(as.numeric(r)) else res = 0
-  res
-})
+#Scale the data
 
 ProjectDataClean$Loan.Amount <- ProjectDataClean$Loan.Amount - 
 
