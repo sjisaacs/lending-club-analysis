@@ -8,15 +8,19 @@ output: html_document
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 
+# In order to install ggthemr, you have to load devtools and install it from github. For me (OBoulant), this command did not worked
 install.packages("ggthemr")
 install.packages("knitr")
 install.packages("rpart")
 install.packages("corrplot")
+install.packages("rpart.plot")
 
 library("ggthemr")
 library("knitr")
 library("rpart")
 library("corrplot")
+library(reshape2)
+library(rpart.plot)
 ```
 
 Business Problem: Assessing credit worthiness of customers in Lending Club and their probability of defaulting.
@@ -79,6 +83,7 @@ ProjectDataClean[,"EmploymentLength"] <- replace(ProjectDataClean[,"EmploymentLe
 ProjectDataClean[,"EmploymentLength"] <- replace(ProjectDataClean[,"EmploymentLength"], ProjectDataClean[,"EmploymentLength"]=="10+ years",10)
 ProjectDataClean[,"EmploymentLength"] <- replace(ProjectDataClean[,"EmploymentLength"], ProjectDataClean[,"EmploymentLength"]=="n/a",NA)
 
+# OBoulant : I am not sure you want here to translate Grade into numeric. Here is why : for sure A is better than B, which is better than B, which is better than C etc. BUT how much A is better than B compared to B better than C ? Indeed, while introducing A = 1, B = 2, C = 3, you artificially introduce into the data that having A in comparison with B, is the same as having C in comparison to D. I am not sure (pretty sure not) this hypothesis is verified. You can use your translation, just keep in mind this
 ProjectDataClean[,"LoanGrade"] <- replace(ProjectDataClean[,"LoanGrade"], ProjectDataClean[,"LoanGrade"]=="A",1)
 ProjectDataClean[,"LoanGrade"] <- replace(ProjectDataClean[,"LoanGrade"], ProjectDataClean[,"LoanGrade"]=="B",2)
 ProjectDataClean[,"LoanGrade"] <- replace(ProjectDataClean[,"LoanGrade"], ProjectDataClean[,"LoanGrade"]=="C",3)
@@ -109,16 +114,10 @@ ProjectDataScaled[,8:11]<-apply(ProjectDataNumeric[,8:11],2, function(r) {if (sd
 # OBoulant comments :
 ######################
 
-# You should decide what you want to do with categorical variables 
-##################################################################
+# You should decide what you want to do with categorical variables
+# 2017/01/24 : I removed from the list the variables you handled above
+######################################################################
 
-## 1 - term
-# Should term be represented as character strings ("36 months" and "60 months") or by 36 and 60 ? 
-unique(ProjectData$term)
-ProjectData$term <- as.factor(ProjectData$term)
-## 2 - Grades 
-unique(ProjectData$grade)
-ProjectData$grade <- as.factor(ProjectData$grade)
 ## 3 - sub_grade
 unique(ProjectData$sub_grade)
 ProjectData$sub_grade <- as.factor(ProjectData$sub_grade)
@@ -127,22 +126,16 @@ unique(ProjectData$emp_title)
 head(table(ProjectData$emp_title))
 sum(ProjectData$emp_title == '') # Many blanks !
 # This field should be re-processed
-## 5 - emp_length
-unique(ProjectData$emp_length)
-ProjectData$emp_length <- as.factor(ProjectData$emp_length)
 ## 6 - home_ownership
 unique(ProjectData$home_ownership)
 ProjectData$home_ownership <- as.factor(ProjectData$home_ownership)
-## 7 - home_ownership
+## 7 - verification_status
 unique(ProjectData$verification_status)
 ProjectData$verification_status <- as.factor(ProjectData$verification_status)
 ## 8 - issue_d
 unique(ProjectData$issue_d)
 ProjectData$issue_d <- as.factor(ProjectData$issue_d)
 # Maybe should be separated in issue_year and issue_month
-## 9 - loan_status
-unique(ProjectData$loan_status)
-ProjectData$loan_status <- as.factor(ProjectData$loan_status)
 ## 10 - pymnt_plan
 unique(ProjectData$pymnt_plan)
 ProjectData$pymnt_plan <- as.factor(ProjectData$pymnt_plan)
@@ -274,16 +267,18 @@ x1 = estimation_data[which(estimation_data[,dependent_variable]==DVvalues[2]),in
 colnames(x0) <- 1:ncol(x0)
 colnames(x1) <- 1:ncol(x1)
 
+# OBoulant : had to add the following line :
+ggthemr('dust')
 swatch.default <- as.character(swatch())
 set_swatch(c(swatch.default[1], colorRampPalette(RColorBrewer::brewer.pal(12, "Paired"))(ncol(x0))))
-ggplot(melt(cbind.data.frame(n=1:nrow(x0), x0), id="n"), aes(x=n, y=value, colour=variable)) + geom_boxplot(fill="#FFFFFF", size=0.66, position=position_dodge(1.1*nrow(x0)))
+ggplot(melt(cbind.data.frame(n=1:nrow(x0), x0), id="n"), aes(x=n, y=value, colour=variable)) + geom_boxplot(fill="#FFFFFF", size=0.66, position=position_dodge(1.1*nrow(x0))) + coord_cartesian(ylim=c(-10,10)) # OBoulant : i added the y axis limits
 set_swatch(swatch.default)
 ```
 
 ```{r, fig.height=4.5}
 swatch.default <- as.character(swatch())
 set_swatch(c(swatch.default[1], colorRampPalette(RColorBrewer::brewer.pal(12, "Paired"))(ncol(x1))))
-ggplot(melt(cbind.data.frame(n=1:nrow(x1), x1), id="n"), aes(x=n, y=value, colour=variable)) + geom_boxplot(fill="#FFFFFF", size=0.66, position=position_dodge(1.1*nrow(x1)))
+ggplot(melt(cbind.data.frame(n=1:nrow(x1), x1), id="n"), aes(x=n, y=value, colour=variable)) + geom_boxplot(fill="#FFFFFF", size=0.66, position=position_dodge(1.1*nrow(x1))) + coord_cartesian(ylim=c(-10,10)) # OBoulant : i added the y axis limits
 set_swatch(swatch.default)
 ```
 
