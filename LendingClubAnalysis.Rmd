@@ -51,8 +51,8 @@ If you want to "identify early indicators that could predict a customer’s prob
 
 ### 3.Key Summary of Data
 
-```{r eval = FALSE, echo=TRUE, comment=NA, warning=FALSE, message=FALSE,results='markup'}
-ProjectData<- read.csv(file = "Data/loan.csv", header = TRUE, sep=",", stringsAsFactors = FALSE, nrows=10000)
+```{r eval = FALSE, echo=FALSE, comment=NA, warning=FALSE, message=FALSE,results='markup'}
+ProjectData<- read.csv(file = "Data/loan.csv", header = TRUE, sep=",", stringsAsFactors = FALSE, nrows=500000)
 # OBoulant : i added the "stringsAsFactors = FALSE", because I want to look at the variables represented by character strings
 # SIsaacs: I added "nrows = 10000" to work with a smaller more manageable data set
 # print(colnames(ProjectData))
@@ -84,6 +84,7 @@ ProjectDataClean[,"EmploymentLength"] <- replace(ProjectDataClean[,"EmploymentLe
 ProjectDataClean[,"EmploymentLength"] <- replace(ProjectDataClean[,"EmploymentLength"], ProjectDataClean[,"EmploymentLength"]=="n/a",NA)
 
 # OBoulant : I am not sure you want here to translate Grade into numeric. Here is why : for sure A is better than B, which is better than B, which is better than C etc. BUT how much A is better than B compared to B better than C ? Indeed, while introducing A = 1, B = 2, C = 3, you artificially introduce into the data that having A in comparison with B, is the same as having C in comparison to D. I am not sure (pretty sure not) this hypothesis is verified. You can use your translation, just keep in mind this
+# SIsaacs: Thanks Olivier. Do you have a suggestion of how to handle this better if we don't convert loan grade to numeric? Otherwise we will just be explicit in stating our assumption here.
 ProjectDataClean[,"LoanGrade"] <- replace(ProjectDataClean[,"LoanGrade"], ProjectDataClean[,"LoanGrade"]=="A",1)
 ProjectDataClean[,"LoanGrade"] <- replace(ProjectDataClean[,"LoanGrade"], ProjectDataClean[,"LoanGrade"]=="B",2)
 ProjectDataClean[,"LoanGrade"] <- replace(ProjectDataClean[,"LoanGrade"], ProjectDataClean[,"LoanGrade"]=="C",3)
@@ -110,7 +111,7 @@ ProjectDataScaled[,8:11]<-apply(ProjectDataNumeric[,8:11],2, function(r) {if (sd
 
 ```
        
-```{r eval = FALSE, echo=TRUE, comment=NA, warning=FALSE, message=FALSE,results='markup'}
+```{r eval = FALSE, echo=FALSE, comment=NA, warning=FALSE, message=FALSE,results='markup'}
 # OBoulant comments :
 ######################
 
@@ -192,7 +193,7 @@ summary(ProjectData)
 
 ### 4.Dimensionality Reduction
 
-```{r eval = FALSE, echo=TRUE, comment=NA, warning=FALSE, message=FALSE,results='markup'}
+```{r eval = FALSE, echo=FALSE, comment=NA, warning=FALSE, message=FALSE,results='markup'}
 
 dependent_variable<-2
 independent_variables<-c(3:11)
@@ -212,7 +213,7 @@ estimation_data_percent <- 80
 validation_data_percent <- 10
 random_sampling = 0
 
-CART_cp <- 0.01
+CART_cp <- 0.0015
 min_segment <- 100
 max_data_report <- 10
 
@@ -240,13 +241,13 @@ test_data=ProjectDataScaled[test_data_ids,]
 
 ```
 
-```{r eval = TRUE, echo=TRUE, comment=NA, warning=FALSE, message=FALSE,results='markup'}
+```{r eval = TRUE, echo=FALSE, comment=NA, warning=FALSE, message=FALSE,results='markup'}
 class_percentages=matrix(c(sum(estimation_data[,dependent_variable]==1),sum(estimation_data[,dependent_variable]==0)), nrow=1); colnames(class_percentages)<-c("Class 1", "Class 0")
 rownames(class_percentages)<-"# of Observations"
 knitr::kable(class_percentages)
 ```
 
-```{r eval = TRUE, echo=TRUE, comment=NA, warning=FALSE, message=FALSE,results='markup'}
+```{r eval = TRUE, echo=FALSE, comment=NA, warning=FALSE, message=FALSE,results='markup'}
 class_percentages=matrix(c(sum(validation_data[,dependent_variable]==1),sum(validation_data[,dependent_variable]==0)), nrow=1); colnames(class_percentages)<-c("Class 1", "Class 0")
 rownames(class_percentages)<-"# of Observations"
 knitr::kable(class_percentages)
@@ -304,20 +305,19 @@ validation_data = data.frame(validation_data)
 test_data = data.frame(test_data)
 
 formula=paste(colnames(estimation_data)[dependent_variable],paste(Reduce(paste,sapply(head(independent_variables_nolabel,-1), function(i) paste(i,"+",sep=""))),tail(independent_variables_nolabel,1),sep=""),sep="~")
-CART_tree<-rpart(formula, data= estimation_data_nolabel,method="class", control=CART_control)
-
+CART_tree<-rpart(formula, data=estimation_data_nolabel, method="class", control=CART_control)
 rpart.plot(CART_tree)
 ```
 
 ```{r}
-CART_tree_large<-rpart(formula, data= estimation_data_nolabel,method="class", control=rpart.control(cp = 0.005))
+CART_tree_large<-rpart(formula, data=estimation_data_nolabel, method="class", control=rpart.control(cp=0.00001, maxdepth=6, minbucket = 10))
 rpart.plot(CART_tree_large)
 ```
 
 ```{r}
 # Let's first calculate all probabilites for the estimation, validation, and test data
-estimation_Probability_class1_tree<-predict(CART_tree, estimation_data_nolabel)[,2]
-estimation_Probability_class1_tree_large<-predict(CART_tree_large, estimation_data_nolabel)[,2]
+estimation_Probability_class1_tree<-predict(CART_tree_anova, estimation_data_nolabel)[,2]
+estimation_Probability_class1_tree_large<-predict(CART_tree_large_anova, estimation_data_nolabel)[,2]
 
 validation_Probability_class1_tree<-predict(CART_tree, validation_data_nolabel)[,2]
 validation_Probability_class1_tree_large<-predict(CART_tree_large, validation_data_nolabel)[,2]
