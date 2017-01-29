@@ -14,6 +14,8 @@ install.packages("knitr")
 install.packages("rpart")
 install.packages("corrplot")
 install.packages("rpart.plot")
+install.packages("fastICA")
+install.packages("FactoMineR")
 
 library("ggthemr")
 library("knitr")
@@ -21,6 +23,9 @@ library("rpart")
 library("corrplot")
 library(reshape2)
 library(rpart.plot)
+library(caret)
+library(FactoMineR)
+library(fastICA)
 ```
 
 Business Problem: Assessing credit worthiness of customers in Lending Club and their probability of defaulting.
@@ -58,56 +63,51 @@ ProjectData<- read.csv(file = "Data/loan.csv", header = TRUE, sep=",", stringsAs
 # print(colnames(ProjectData))
 # summary(ProjectData)
 
-ProjectDataClean <- ProjectData$id
-ProjectDataClean <- cbind(ProjectDataClean, ProjectData$loan_status, ProjectData$loan_amnt, ProjectData$term, ProjectData$annual_inc, ProjectData$emp_length, ProjectData$pub_rec, ProjectData$open_acc, ProjectData$delinq_2yrs, ProjectData$grade, ProjectData$int_rate)
-colnames(ProjectDataClean) <- c("ID", "LoanStatus", "LoanAmount", "LoanTerm", "AnnualIncome", "EmploymentLength", "PublicRecords", "NumberCreditLines", "DelinquencyPrior2Years", "LoanGrade", "InterestRate")
+# Keep only observations for which 'loan_status' is in ('Charged Off', 'Current', 'Fully Paid')
+ProjectData <- ProjectData[ ProjectData$loan_status %in% c('Charged Off', 'Current', 'Fully Paid'), ]
 
-#Convert the data to numbers
-ProjectDataClean[,"LoanStatus"] <- replace(ProjectDataClean[,"LoanStatus"], ProjectDataClean[,"LoanStatus"]=="Charged Off", 1)
-ProjectDataClean[,"LoanStatus"] <- replace(ProjectDataClean[,"LoanStatus"], ProjectDataClean[,"LoanStatus"]=="Current", 0)
-ProjectDataClean[,"LoanStatus"] <- replace(ProjectDataClean[,"LoanStatus"], ProjectDataClean[,"LoanStatus"]=="Fully Paid", 0)
+# Take for now only numerical values
+ProjectDataClean2 <- ProjectData[, c('id', 'loan_amnt', 'annual_inc', 'pub_rec', 'open_acc', 'delinq_2yrs', 'int_rate')]
+colnames(ProjectDataClean2) <- c('ID', 'LoanAmount', 'AnnualIncome', 'PublicRecords', 'NumberCreditLines', 'DelinquencyPrior2Years', 'InterestRate')
 
-ProjectDataClean[,"LoanTerm"] <- replace(ProjectDataClean[,"LoanTerm"], ProjectDataClean[,"LoanTerm"]==" 36 months", 36)
-ProjectDataClean[,"LoanTerm"] <- replace(ProjectDataClean[,"LoanTerm"], ProjectDataClean[,"LoanTerm"]==" 60 months", 60)
+## Handle LoanStatus
+ProjectDataClean2 <- cbind(ProjectDataClean2, 
+                          data.frame(predict(dummyVars(~ loan_status, data = ProjectData),
+                                                    newdata = ProjectData)))
+# remove columns 'loan_statusCurrent' and 'loan_statusFully.Paid'. Why ? Because you only need loan_statusCharged.Off
+ProjectDataClean2 <- ProjectDataClean2[, !(names(ProjectDataClean2) %in% c('loan_statusCurrent', 'loan_statusFully.Paid'))]
 
-ProjectDataClean[,"EmploymentLength"] <- replace(ProjectDataClean[,"EmploymentLength"], ProjectDataClean[,"EmploymentLength"]=="< 1 year", 0)
-ProjectDataClean[,"EmploymentLength"] <- replace(ProjectDataClean[,"EmploymentLength"], ProjectDataClean[,"EmploymentLength"]=="1 year", 1)
-ProjectDataClean[,"EmploymentLength"] <- replace(ProjectDataClean[,"EmploymentLength"], ProjectDataClean[,"EmploymentLength"]=="2 years", 2)
-ProjectDataClean[,"EmploymentLength"] <- replace(ProjectDataClean[,"EmploymentLength"], ProjectDataClean[,"EmploymentLength"]=="3 years", 3)
-ProjectDataClean[,"EmploymentLength"] <- replace(ProjectDataClean[,"EmploymentLength"], ProjectDataClean[,"EmploymentLength"]=="4 years", 4)
-ProjectDataClean[,"EmploymentLength"] <- replace(ProjectDataClean[,"EmploymentLength"], ProjectDataClean[,"EmploymentLength"]=="5 years", 5)
-ProjectDataClean[,"EmploymentLength"] <- replace(ProjectDataClean[,"EmploymentLength"], ProjectDataClean[,"EmploymentLength"]=="6 years", 6)
-ProjectDataClean[,"EmploymentLength"] <- replace(ProjectDataClean[,"EmploymentLength"], ProjectDataClean[,"EmploymentLength"]=="7 years", 7)
-ProjectDataClean[,"EmploymentLength"] <- replace(ProjectDataClean[,"EmploymentLength"], ProjectDataClean[,"EmploymentLength"]=="8 years", 8)
-ProjectDataClean[,"EmploymentLength"] <- replace(ProjectDataClean[,"EmploymentLength"], ProjectDataClean[,"EmploymentLength"]=="9 years", 9)
-ProjectDataClean[,"EmploymentLength"] <- replace(ProjectDataClean[,"EmploymentLength"], ProjectDataClean[,"EmploymentLength"]=="10+ years",10)
-ProjectDataClean[,"EmploymentLength"] <- replace(ProjectDataClean[,"EmploymentLength"], ProjectDataClean[,"EmploymentLength"]=="n/a",NA)
+## Handle LoanTerm
+ProjectDataClean2$LoanTerm <- 0
+ProjectDataClean2[ProjectData$term == " 36 months", c('LoanTerm')] <- 36
+ProjectDataClean2[ProjectData$term == " 60 months", c('LoanTerm')] <- 60
 
-# OBoulant : I am not sure you want here to translate Grade into numeric. Here is why : for sure A is better than B, which is better than B, which is better than C etc. BUT how much A is better than B compared to B better than C ? Indeed, while introducing A = 1, B = 2, C = 3, you artificially introduce into the data that having A in comparison with B, is the same as having C in comparison to D. I am not sure (pretty sure not) this hypothesis is verified. You can use your translation, just keep in mind this
-# SIsaacs: Thanks Olivier. Do you have a suggestion of how to handle this better if we don't convert loan grade to numeric? Otherwise we will just be explicit in stating our assumption here.
-ProjectDataClean[,"LoanGrade"] <- replace(ProjectDataClean[,"LoanGrade"], ProjectDataClean[,"LoanGrade"]=="A",1)
-ProjectDataClean[,"LoanGrade"] <- replace(ProjectDataClean[,"LoanGrade"], ProjectDataClean[,"LoanGrade"]=="B",2)
-ProjectDataClean[,"LoanGrade"] <- replace(ProjectDataClean[,"LoanGrade"], ProjectDataClean[,"LoanGrade"]=="C",3)
-ProjectDataClean[,"LoanGrade"] <- replace(ProjectDataClean[,"LoanGrade"], ProjectDataClean[,"LoanGrade"]=="D",4)
-ProjectDataClean[,"LoanGrade"] <- replace(ProjectDataClean[,"LoanGrade"], ProjectDataClean[,"LoanGrade"]=="E",5)
-ProjectDataClean[,"LoanGrade"] <- replace(ProjectDataClean[,"LoanGrade"], ProjectDataClean[,"LoanGrade"]=="F",6)
-ProjectDataClean[,"LoanGrade"] <- replace(ProjectDataClean[,"LoanGrade"], ProjectDataClean[,"LoanGrade"]=="G",7)
+## Handle EmploymentLength
+ProjectDataClean2$EmploymentLength <- 0
+ProjectDataClean2[ProjectData$emp_length == "< 1 year", c('EmploymentLength')] <- 0
+ProjectDataClean2[ProjectData$emp_length == "1 year", c('EmploymentLength')] <- 1
+ProjectDataClean2[ProjectData$emp_length == "2 years", c('EmploymentLength')] <- 2
+ProjectDataClean2[ProjectData$emp_length == "3 years", c('EmploymentLength')] <- 3
+ProjectDataClean2[ProjectData$emp_length == "4 years", c('EmploymentLength')] <- 4
+ProjectDataClean2[ProjectData$emp_length == "5 years", c('EmploymentLength')] <- 5
+ProjectDataClean2[ProjectData$emp_length == "6 years", c('EmploymentLength')] <- 6
+ProjectDataClean2[ProjectData$emp_length == "7 years", c('EmploymentLength')] <- 7
+ProjectDataClean2[ProjectData$emp_length == "8 years", c('EmploymentLength')] <- 8
+ProjectDataClean2[ProjectData$emp_length == "9 years", c('EmploymentLength')] <- 9
+ProjectDataClean2[ProjectData$emp_length == "10+ years", c('EmploymentLength')] <- 10
+ProjectDataClean2[ProjectData$emp_length == "n/a", c('EmploymentLength')] <- NA
 
-#convert to numeric
-ProjectDataNumeric<-matrix(as.numeric(unlist(ProjectDataClean)),nrow=nrow(ProjectDataClean))
-colnames(ProjectDataNumeric) <- c("ID", "LoanStatus", "LoanAmount", "LoanTerm", "AnnualIncome", "EmploymentLength", "PublicRecords", "NumberCreditLines", "DelinquencyPrior2Years", "LoanGrade", "InterestRate")
+## Handle LoanGrade
+ProjectDataClean2 <- cbind(ProjectDataClean2, 
+                          data.frame(predict(dummyVars(~ grade, data = ProjectData),
+                                                    newdata = ProjectData)))
 
 #remove NAs
-ProjectDataNumeric<-na.omit(ProjectDataNumeric)
+ProjectDataNumeric<-na.omit(ProjectDataClean2)
 
 #correlation matrix to explore data
 acor <- cor(ProjectDataNumeric)
 corrplot(acor, type="lower", tl.srt=45)
-
-#scale data
-ProjectDataScaled<-ProjectDataNumeric
-ProjectDataScaled[,3:6]<-apply(ProjectDataNumeric[,3:6],2, function(r) {if (sd(r)!=0) res=(r-mean(r))/sd(r) else res=0*r; res})
-ProjectDataScaled[,8:11]<-apply(ProjectDataNumeric[,8:11],2, function(r) {if (sd(r)!=0) res=(r-mean(r))/sd(r) else res=0*r; res})
 
 ```
        
@@ -195,206 +195,28 @@ summary(ProjectData)
 
 ```{r eval = FALSE, echo=FALSE, comment=NA, warning=FALSE, message=FALSE,results='markup'}
 
-dependent_variable<-2
-independent_variables<-c(3:11)
+ProjectDataNumericWithoutStatus <- ProjectDataNumeric[, -which(names(ProjectDataNumeric) %in% c('loan_statusCharged.Off'))]
+res.pca = PCA(ProjectDataNumericWithoutStatus, scale.unit=TRUE, ncp=5)
 
-#profit/loss values
-#actual default, predict default
-actual_1_predict_1 <- 50
-#actual default, predict repayment
-actual_1_predict_0 <- -100
-#actual repayment, predict default
-actual_0_predict_1 <- -50
-#actual repayment, predict repayment
-actual_0_predict_0 <- 100
-
-Probability_Threshold <- 0.5
-estimation_data_percent <- 80
-validation_data_percent <- 10
-random_sampling = 0
-
-CART_cp <- 0.0015
-min_segment <- 100
-max_data_report <- 10
-
-Profit_Matrix = matrix(c(actual_1_predict_1, actual_0_predict_1, actual_1_predict_0, actual_0_predict_0), ncol=2)
-colnames(Profit_Matrix)<- c("Predict 1", "Predict 0")
-rownames(Profit_Matrix) <- c("Actual 1", "Actual 0")
-test_data_percent = 100-estimation_data_percent-validation_data_percent
-CART_control = rpart.control(cp = CART_cp)
-
-if (random_sampling){
-  estimation_data_ids=sample.int(nrow(ProjectDataScaled),floor(estimation_data_percent*nrow(ProjectDataScaled)/100))
-  non_estimation_data = setdiff(1:nrow(ProjectDataScaled),estimation_data_ids)
-  validation_data_ids=non_estimation_data[sample.int(length(non_estimation_data), floor(validation_data_percent/(validation_data_percent+test_data_percent)*length(non_estimation_data)))]
-  } else {
-    estimation_data_ids=1:floor(estimation_data_percent*nrow(ProjectDataScaled)/100)
-    non_estimation_data = setdiff(1:nrow(ProjectDataScaled),estimation_data_ids)
-    validation_data_ids = (tail(estimation_data_ids,1)+1):(tail(estimation_data_ids,1) + floor(validation_data_percent/(validation_data_percent+test_data_percent)*length(non_estimation_data)))
-    }
-
-test_data_ids = setdiff(1:nrow(ProjectDataScaled), union(estimation_data_ids,validation_data_ids))
-
-estimation_data=ProjectDataScaled[estimation_data_ids,]
-validation_data=ProjectDataScaled[validation_data_ids,]
-test_data=ProjectDataScaled[test_data_ids,]
+# Information embedded by principal components
+barplot(res.pca$eig[,2])
 
 ```
 
-```{r eval = TRUE, echo=FALSE, comment=NA, warning=FALSE, message=FALSE,results='markup'}
-class_percentages=matrix(c(sum(estimation_data[,dependent_variable]==1),sum(estimation_data[,dependent_variable]==0)), nrow=1); colnames(class_percentages)<-c("Class 1", "Class 0")
-rownames(class_percentages)<-"# of Observations"
-knitr::kable(class_percentages)
+```{r eval = FALSE, echo=FALSE, comment=NA, warning=FALSE, message=FALSE,results='markup'}
+
+# How the 2 first principal components are constructed by the original variables
+plot(res.pca,choix="var",axes=c(1,2))
+
 ```
 
-```{r eval = TRUE, echo=FALSE, comment=NA, warning=FALSE, message=FALSE,results='markup'}
-class_percentages=matrix(c(sum(validation_data[,dependent_variable]==1),sum(validation_data[,dependent_variable]==0)), nrow=1); colnames(class_percentages)<-c("Class 1", "Class 0")
-rownames(class_percentages)<-"# of Observations"
-knitr::kable(class_percentages)
+```{r eval = FALSE, echo=FALSE, comment=NA, warning=FALSE, message=FALSE,results='markup'}
+
+# How the 2 first principal components are constructed by the original variables
+print(res.pca$var$coord)
+
 ```
 
-```{r}
-#knitr::kable(round(my_summary(estimation_data[estimation_data[,dependent_variable]==1,independent_variables]),2))
-```
-
-```{r}
-#knitr::kable(round(my_summary(estimation_data[estimation_data[,dependent_variable]==0,independent_variables]),2))
-```
-
-```{r, fig.height=4.5}
-DVvalues = unique(estimation_data[,dependent_variable])
-x0 = estimation_data[which(estimation_data[,dependent_variable]==DVvalues[1]),independent_variables]
-x1 = estimation_data[which(estimation_data[,dependent_variable]==DVvalues[2]),independent_variables]
-colnames(x0) <- 1:ncol(x0)
-colnames(x1) <- 1:ncol(x1)
-
-# OBoulant : had to add the following line :
-ggthemr('dust')
-swatch.default <- as.character(swatch())
-set_swatch(c(swatch.default[1], colorRampPalette(RColorBrewer::brewer.pal(12, "Paired"))(ncol(x0))))
-ggplot(melt(cbind.data.frame(n=1:nrow(x0), x0), id="n"), aes(x=n, y=value, colour=variable)) + geom_boxplot(fill="#FFFFFF", size=0.66, position=position_dodge(1.1*nrow(x0))) + coord_cartesian(ylim=c(-10,10)) # OBoulant : i added the y axis limits
-set_swatch(swatch.default)
-```
-
-```{r, fig.height=4.5}
-swatch.default <- as.character(swatch())
-set_swatch(c(swatch.default[1], colorRampPalette(RColorBrewer::brewer.pal(12, "Paired"))(ncol(x1))))
-ggplot(melt(cbind.data.frame(n=1:nrow(x1), x1), id="n"), aes(x=n, y=value, colour=variable)) + geom_boxplot(fill="#FFFFFF", size=0.66, position=position_dodge(1.1*nrow(x1))) + coord_cartesian(ylim=c(-10,10)) # OBoulant : i added the y axis limits
-set_swatch(swatch.default)
-```
-
-```{r}
-# just name the variables numerically so that they look ok on the tree plots
-independent_variables_nolabel = paste("IV", 1:length(independent_variables), sep="")
-
-estimation_data_nolabel = cbind(estimation_data[,dependent_variable], estimation_data[,independent_variables])
-colnames(estimation_data_nolabel)<- c(colnames(estimation_data)[dependent_variable],independent_variables_nolabel)
-
-validation_data_nolabel = cbind(validation_data[,dependent_variable], validation_data[,independent_variables])
-colnames(validation_data_nolabel)<- c(dependent_variable,independent_variables_nolabel)
-
-test_data_nolabel = cbind(test_data[,dependent_variable], test_data[,independent_variables])
-colnames(test_data_nolabel)<- c(dependent_variable,independent_variables_nolabel)
-
-estimation_data_nolabel = data.frame(estimation_data_nolabel)
-validation_data_nolabel = data.frame(validation_data_nolabel)
-test_data_nolabel = data.frame(test_data_nolabel)
-
-estimation_data = data.frame(estimation_data)
-validation_data = data.frame(validation_data)
-test_data = data.frame(test_data)
-
-formula=paste(colnames(estimation_data)[dependent_variable],paste(Reduce(paste,sapply(head(independent_variables_nolabel,-1), function(i) paste(i,"+",sep=""))),tail(independent_variables_nolabel,1),sep=""),sep="~")
-CART_tree<-rpart(formula, data=estimation_data_nolabel, method="class", control=CART_control)
-rpart.plot(CART_tree)
-```
-
-```{r}
-CART_tree_large<-rpart(formula, data=estimation_data_nolabel, method="class", control=rpart.control(cp=0.00001, maxdepth=6, minbucket = 10))
-rpart.plot(CART_tree_large)
-```
-
-```{r}
-# Let's first calculate all probabilites for the estimation, validation, and test data
-estimation_Probability_class1_tree<-predict(CART_tree_anova, estimation_data_nolabel)[,2]
-estimation_Probability_class1_tree_large<-predict(CART_tree_large_anova, estimation_data_nolabel)[,2]
-
-validation_Probability_class1_tree<-predict(CART_tree, validation_data_nolabel)[,2]
-validation_Probability_class1_tree_large<-predict(CART_tree_large, validation_data_nolabel)[,2]
-
-test_Probability_class1_tree<-predict(CART_tree, test_data_nolabel)[,2]
-test_Probability_class1_tree_large<-predict(CART_tree_large, test_data_nolabel)[,2]
-
-estimation_prediction_class_tree=1*as.vector(estimation_Probability_class1_tree > Probability_Threshold)
-estimation_prediction_class_tree_large=1*as.vector(estimation_Probability_class1_tree_large > Probability_Threshold)
-
-validation_prediction_class_tree=1*as.vector(validation_Probability_class1_tree > Probability_Threshold)
-validation_prediction_class_tree_large=1*as.vector(validation_Probability_class1_tree_large > Probability_Threshold)
-
-test_prediction_class_tree=1*as.vector(test_Probability_class1_tree > Probability_Threshold)
-test_prediction_class_tree_large=1*as.vector(test_Probability_class1_tree_large > Probability_Threshold)
-
-Classification_Table=rbind(validation_data[,dependent_variable],validation_Probability_class1_tree)
-rownames(Classification_Table)<-c("Actual Class","Probability of Class 1")
-colnames(Classification_Table)<- paste("Obs", 1:ncol(Classification_Table), sep=" ")
-
-Classification_Table_large=rbind(validation_data[,dependent_variable],validation_Probability_class1_tree)
-rownames(Classification_Table_large)<-c("Actual Class","Probability of Class 1")
-colnames(Classification_Table_large)<- paste("Obs", 1:ncol(Classification_Table_large), sep=" ")
-
-knitr::kable(head(t(round(Classification_Table,2)), max_data_report))
-```
-
-```{r}
-formula_log=paste(colnames(estimation_data[,dependent_variable,drop=F]),paste(Reduce(paste,sapply(head(independent_variables,-1), function(i) paste(colnames(estimation_data)[i],"+",sep=""))),colnames(estimation_data)[tail(independent_variables,1)],sep=""),sep="~")
-
-logreg_solution <- glm(formula_log, family=binomial(link="logit"),  data=estimation_data)
-log_coefficients <- round(summary(logreg_solution)$coefficients,1)
-
-knitr::kable(round(log_coefficients,2))
-```
-
-```{r}
-# Let's get the probabilities for the 3 types of data again
-estimation_Probability_class1_log<-predict(logreg_solution, type="response", newdata=estimation_data[,independent_variables])
-validation_Probability_class1_log<-predict(logreg_solution, type="response", newdata=validation_data[,independent_variables])
-test_Probability_class1_log<-predict(logreg_solution, type="response", newdata=test_data[,independent_variables])
-
-estimation_prediction_class_log=1*as.vector(estimation_Probability_class1_log > Probability_Threshold)
-validation_prediction_class_log=1*as.vector(validation_Probability_class1_log > Probability_Threshold)
-test_prediction_class_log=1*as.vector(test_Probability_class1_log > Probability_Threshold)
-
-Classification_Table=rbind(validation_data[,dependent_variable],validation_Probability_class1_log)
-rownames(Classification_Table)<-c("Actual Class","Probability of Class 1")
-colnames(Classification_Table)<- paste("Obs", 1:ncol(Classification_Table), sep=" ")
-
-knitr::kable(head(t(round(Classification_Table,2)), max_data_report))
-```
-
-```{r echo=FALSE, comment=NA, warning=FALSE, message=FALSE, results='asis'}
-log_importance = tail(log_coefficients[,"z value", drop=F],-1) # remove the intercept
-log_importance = log_importance/max(abs(log_importance))
-
-tree_importance = CART_tree$variable.importance
-tree_ordered_drivers = as.numeric(gsub("\\IV"," ",names(CART_tree$variable.importance)))
-tree_importance_final = rep(0,length(independent_variables))
-tree_importance_final[tree_ordered_drivers] <- tree_importance
-tree_importance_final <- tree_importance_final/max(abs(tree_importance_final))
-tree_importance_final <- tree_importance_final*sign(log_importance)
-
-large_tree_importance = CART_tree_large$variable.importance
-large_tree_ordered_drivers = as.numeric(gsub("\\IV"," ",names(CART_tree_large$variable.importance)))
-large_tree_importance_final = rep(0,length(independent_variables))
-large_tree_importance_final[large_tree_ordered_drivers] <- large_tree_importance
-large_tree_importance_final <- large_tree_importance_final/max(abs(large_tree_importance_final))
-large_tree_importance_final <- large_tree_importance_final*sign(log_importance)
-
-Importance_table <- cbind(tree_importance_final,large_tree_importance_final, log_importance)
-colnames(Importance_table) <- c("CART 1", "CART 2", "Logistic Regr.")
-rownames(Importance_table) <- rownames(log_importance)
-## printing the result in a clean-slate table
-knitr::kable(round(Importance_table,2))
-```
 
 ### 5.Clustering and Segmentation
 
