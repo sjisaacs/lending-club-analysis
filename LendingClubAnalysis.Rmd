@@ -14,6 +14,8 @@ install.packages("knitr")
 install.packages("rpart")
 install.packages("corrplot")
 install.packages("rpart.plot")
+install.packages("fastICA")
+install.packages("FactoMineR")
 
 library("ggthemr")
 library("knitr")
@@ -21,6 +23,11 @@ library("rpart")
 library("corrplot")
 library("reshape2")
 library("rpart.plot")
+library("reshape2")
+library("rpart.plot")
+library("caret")
+library("FactoMineR")
+library("fastICA")
 ```
 
 Business Problem: Assessing credit worthiness of customers in Lending Club and their probability of defaulting.
@@ -32,24 +39,41 @@ Data set: https://www.kaggle.com/wendykan/lending-club-loan-data
 Lending Club is the world’s largest online marketplace connecting borrowers and investors.They operate at a lower cost than traditional bank lending programs and pass the savings on to borrowers in the form of lower rates and to investors in the form of solid returns.
 Source: https://www.lendingclub.com/
 
-This project aims to analyse Lending Club's issued loans over a 9 year period (2007-2015) and identify early indicators that could predict a customer's probability of defaulting. The insight obtained could help to drive differentiated credit approval processes for different customer segments (e.g faster approval time, minimal security for low risk customers).
+This project aims to analyse Lending Club's issued loans over a 9 year period (2007-2015) and identify early indicators that could predict a customer's probability of defaulting. The insights obtained could help Lending Club to 
+a) Develop customer profiles with High vs Low Default Risk
+b) Design differentiated credit approval processes for different customer segments (e.g faster approval time, minimal security for low risk customers)
+
+The outcome of the above actions has the potential to shape Lending Club's Product Offering, attract the right kind of borrowers and providing investors with stronger returns, thereby improving its own business performance. 
 
 ### 2.Process to solve the Business Problem
 
-We would suggest the following process:      
-1. Understand Lending Club Business Model & Data Set    
-2. Clean the data, identify relevant attributes/columns & separate training and testing dataset    
-3. Generate Hypothesis    
-4. Apply Dimensionality Reduction on Hypothesis     
-5. Apply Segmentation & Classification Tree on Training Dataset    
-6. Apply Algorithm on Testing Dataset (Iterate if required)    
-7. Capture insights & Summarise    
+For the purpose of this analysis, We will follow the below process:      
+1. Understand Lending Club Business Model & Data Set  
+2. Generate Hypothesis on borrower's attributes contributing to probability of default 
+3. Idenfity relevant attributes from dataset
+4. Clean the selected data to remove any N/A & Outliers
+5. Test correlation of selected data to understand their relative dependency
+6. Split dataset into 80% estimation (training) , 10% validation and 10% testing dataset    
+7. Apply Classification Tree method on Testing Dataset and check against Validation dataset (Iterate if required)    
+8. Summarise implication on Lending Club Business Decisions based on Classification Tree's output
 
-**OBoulant comments :**
-If you want to "identify early indicators that could predict a customer’s probability of defaulting", you have to identify into the dataset, a column that would "represent" the "customer’s probability of defaulting". 
---> Do you have an idea of which column within the data could play this role? ProjectData$loan_status
+### 3.Generate Hypothesis on Borrower's attributes & Identify attributes from Dataset (Step 2-3)
 
-### 3.Key Summary of Data
+There are 78 fields (columns) in Lending Club's dataset with many fields capturing irrelevant data or duplicative data measuring similar information. An example of irrelevant data would be "URL" of customer's profile. An example of data measuring similar information would be "Loan Grade" & "SubGrade" where "Loan Grade" rates the quality of the Loan & "SubGrade" is a more granular level of Loan Grade. 
+
+The team applied judgement based on both our understanding of Lending Club's business and our goal within this analysis, in order to identify 11 fields that are particularly relevant for this analysis:
+
+"ID": Unique identification number tagged to the loan
+"LoanStatus": Whether the loan in question has been Charged Off (1=Delinquent), Fully Paid (0), Current (0 =still outstanding)
+"LoanAmount": Amount of loan issued
+"LoanTerm": Duration of loan, either 36 months or 60 months
+"AnnualIncome": Annual income of the Borrower
+"EmploymentLength": Employment length in years. Possible values are between 0 and 10 where 0 means less than one year and 10 means ten or more years. 
+"PublicRecords": Number of derogatory public records
+"NumberCreditLines": The number of open credit lines in the borrower's credit file
+"DelinquencyPrior2Years": The number of 30+ days past-due incidences of delinquency in the borrower's credit file for the past 2 years
+"LoanGrade": Lending Club's assigned loan grade
+"InterestRate": Annual Interest Rate on the loan 
 
 ```{r eval = FALSE, echo=FALSE, comment=NA, warning=FALSE, message=FALSE,results='markup'}
 ProjectData<- read.csv(file = "Data/loan.csv", header = TRUE, sep=",", stringsAsFactors = FALSE, nrows=500000)
@@ -57,10 +81,18 @@ ProjectData<- read.csv(file = "Data/loan.csv", header = TRUE, sep=",", stringsAs
 # SIsaacs: I added "nrows = 10000" to work with a smaller more manageable data set
 # print(colnames(ProjectData))
 # summary(ProjectData)
+```
 
-ProjectDataClean <- ProjectData$id
-ProjectDataClean <- cbind(ProjectDataClean, ProjectData$loan_status, ProjectData$loan_amnt, ProjectData$term, ProjectData$annual_inc, ProjectData$emp_length, ProjectData$pub_rec, ProjectData$open_acc, ProjectData$delinq_2yrs, ProjectData$grade, ProjectData$int_rate)
-colnames(ProjectDataClean) <- c("ID", "LoanStatus", "LoanAmount", "LoanTerm", "AnnualIncome", "EmploymentLength", "PublicRecords", "NumberCreditLines", "DelinquencyPrior2Years", "LoanGrade", "InterestRate")
+### 4. Treatment of Dataset (Convert to Metric, Cleanse & Scale) (Step 4 - 5)
+Imported data from these 11 fields are then treated by converting them to be metric and numeric from descriptive/categorical. For example, Employment Length, which was of the form "9 years" in the raw data was subsequently converted to "9". 
+
+Conversion is applied to the fields "LoanStatus", "EmploymentLength" & "LoanGrade". For "LoanGrade", we have assumed that Grade A is better than B which is better than C, and that A, B, C differ by the same extent and therefore can be replaced by metric 1, 2, 3.
+
+Data is also:
+a) cleansed to remove any "NA" fields using 'na.omit'
+b) normalised for fields "LoanAmount", "LoanTerm", "Annual Income", "EmploymentLength", "NumberofCreditLines", "DelinquencyPiror2Years", "LoanGrade", "InterestRate" with mean 0 and standard deviation 1.
+
+```{r eval = FALSE, echo=FALSE, comment=NA, warning=FALSE, message=FALSE,results='markup'}
 
 #Convert the data to numbers
 ProjectDataClean[,"LoanStatus"] <- replace(ProjectDataClean[,"LoanStatus"], ProjectDataClean[,"LoanStatus"]=="Charged Off", 1)
@@ -84,7 +116,9 @@ ProjectDataClean[,"EmploymentLength"] <- replace(ProjectDataClean[,"EmploymentLe
 ProjectDataClean[,"EmploymentLength"] <- replace(ProjectDataClean[,"EmploymentLength"], ProjectDataClean[,"EmploymentLength"]=="n/a",NA)
 
 # OBoulant : I am not sure you want here to translate Grade into numeric. Here is why : for sure A is better than B, which is better than B, which is better than C etc. BUT how much A is better than B compared to B better than C ? Indeed, while introducing A = 1, B = 2, C = 3, you artificially introduce into the data that having A in comparison with B, is the same as having C in comparison to D. I am not sure (pretty sure not) this hypothesis is verified. You can use your translation, just keep in mind this
-# SIsaacs: Thanks Olivier. Do you have a suggestion of how to handle this better if we don't convert loan grade to numeric? Otherwise we will just be explicit in stating our assumption here.
+# SIsaacs: Thanks Olivier. Do you have a suggestion of how to handle this better if we don't convert loan grade to numeric? Otherwise we will just be explicit in stating our assumption here.#
+# Kailing: We are going to leave LoanGrade as scale based on our understanding of how financial institutions appraise loan quality through a metric KPI (i.e Interest Coverage Ratio)
+
 ProjectDataClean[,"LoanGrade"] <- replace(ProjectDataClean[,"LoanGrade"], ProjectDataClean[,"LoanGrade"]=="A",1)
 ProjectDataClean[,"LoanGrade"] <- replace(ProjectDataClean[,"LoanGrade"], ProjectDataClean[,"LoanGrade"]=="B",2)
 ProjectDataClean[,"LoanGrade"] <- replace(ProjectDataClean[,"LoanGrade"], ProjectDataClean[,"LoanGrade"]=="C",3)
@@ -100,98 +134,187 @@ colnames(ProjectDataNumeric) <- c("ID", "LoanStatus", "LoanAmount", "LoanTerm", 
 #remove NAs
 ProjectDataNumeric<-na.omit(ProjectDataNumeric)
 
-#correlation matrix to explore data
-acor <- cor(ProjectDataNumeric)
-corrplot(acor, type="lower", tl.srt=45)
-
 #scale data
 ProjectDataScaled<-ProjectDataNumeric
 ProjectDataScaled[,3:6]<-apply(ProjectDataNumeric[,3:6],2, function(r) {if (sd(r)!=0) res=(r-mean(r))/sd(r) else res=0*r; res})
 ProjectDataScaled[,8:11]<-apply(ProjectDataNumeric[,8:11],2, function(r) {if (sd(r)!=0) res=(r-mean(r))/sd(r) else res=0*r; res})
 
 ```
-       
+
+For LoanGrade, there could be 2 possible interpretation of the factors "A-G". First interpretation is that these factors are catergorical (i.e they represent group of similar qualitative attributes such as "High Net Worth", "Bankrupt Borrowers"). The 2nd interpretation is that these factors are scaled (i.e "A" is better than "B" is better than "C") and are measured based on linear numerical attributes such as 'Interest Coverage Ratio'. 
+
+We decide to run Principal Component Analysis to test the hypothesis of our first interpretation (that factors are catergorial and we can determine what these factors mean by looking at its correlation with other 10 attributes). 
+
+The results of the PCA showed that while some factors could be easily linked to some attributes (e.g. 'A' tend to be customers with high Annual Income), some factors (e.g "C") could not. 
+
+This led us to consider the 2nd interpretation where these factors are scaled. We believe that this is consistent with our understanding of how financial institutions assign credit grades where they evaluate financial health of a borrower through metrics such as Interest Coverage Ratios and then assign a alphabetical grade when the ratio falls within a pre-determined range. Therefore we decided to convert LoanGrade to metric and scale instead of converting it to catergorical variables. 
+
 ```{r eval = FALSE, echo=FALSE, comment=NA, warning=FALSE, message=FALSE,results='markup'}
-# OBoulant comments :
-######################
+# # Keep only observations for which 'loan_status' is in ('Charged Off', 'Current', 'Fully Paid')
+# ProjectData <- ProjectData[ ProjectData$loan_status %in% c('Charged Off', 'Current', 'Fully Paid'), ]
+# 
+# # Take for now only numerical values
+# ProjectDataClean2 <- ProjectData[, c('id', 'loan_amnt', 'annual_inc', 'pub_rec', 'open_acc', 'delinq_2yrs', 'int_rate')]
+# colnames(ProjectDataClean2) <- c('ID', 'LoanAmount', 'AnnualIncome', 'PublicRecords', 'NumberCreditLines', 'DelinquencyPrior2Years', 'InterestRate')
+# 
+# ## Handle LoanStatus
+# ProjectDataClean2 <- cbind(ProjectDataClean2, 
+#                           data.frame(predict(dummyVars(~ loan_status, data = ProjectData),
+#                                                     newdata = ProjectData)))
+# # remove columns 'loan_statusCurrent' and 'loan_statusFully.Paid'. Why ? Because you only need loan_statusCharged.Off
+# ProjectDataClean2 <- ProjectDataClean2[, !(names(ProjectDataClean2) %in% c('loan_statusCurrent', 'loan_statusFully.Paid'))]
+# 
+# ## Handle LoanTerm
+# ProjectDataClean2$LoanTerm <- 0
+# ProjectDataClean2[ProjectData$term == " 36 months", c('LoanTerm')] <- 36
+# ProjectDataClean2[ProjectData$term == " 60 months", c('LoanTerm')] <- 60
+# 
+# ## Handle EmploymentLength
+# ProjectDataClean2$EmploymentLength <- 0
+# ProjectDataClean2[ProjectData$emp_length == "< 1 year", c('EmploymentLength')] <- 0
+# ProjectDataClean2[ProjectData$emp_length == "1 year", c('EmploymentLength')] <- 1
+# ProjectDataClean2[ProjectData$emp_length == "2 years", c('EmploymentLength')] <- 2
+# ProjectDataClean2[ProjectData$emp_length == "3 years", c('EmploymentLength')] <- 3
+# ProjectDataClean2[ProjectData$emp_length == "4 years", c('EmploymentLength')] <- 4
+# ProjectDataClean2[ProjectData$emp_length == "5 years", c('EmploymentLength')] <- 5
+# ProjectDataClean2[ProjectData$emp_length == "6 years", c('EmploymentLength')] <- 6
+# ProjectDataClean2[ProjectData$emp_length == "7 years", c('EmploymentLength')] <- 7
+# ProjectDataClean2[ProjectData$emp_length == "8 years", c('EmploymentLength')] <- 8
+# ProjectDataClean2[ProjectData$emp_length == "9 years", c('EmploymentLength')] <- 9
+# ProjectDataClean2[ProjectData$emp_length == "10+ years", c('EmploymentLength')] <- 10
+# ProjectDataClean2[ProjectData$emp_length == "n/a", c('EmploymentLength')] <- NA
+# 
+# ## Handle LoanGrade
+# ProjectDataClean2 <- cbind(ProjectDataClean2, 
+#                           data.frame(predict(dummyVars(~ grade, data = ProjectData),
+#                                                     newdata = ProjectData)))
+# 
+# #remove NAs
+# ProjectDataNumeric<-na.omit(ProjectDataClean2)
+# 
+# #correlation matrix to explore data
+# acor <- cor(ProjectDataNumeric)
+# corrplot(acor, type="lower", tl.srt=45)
+# 
+# # OBoulant comments :
+# ######################
+# 
+# # You should decide what you want to do with categorical variables
+# # 2017/01/24 : I removed from the list the variables you handled above
+# ######################################################################
+# 
+# ## 3 - sub_grade
+# unique(ProjectData$sub_grade)
+# ProjectData$sub_grade <- as.factor(ProjectData$sub_grade)
+# ## 4 - emp_title
+# unique(ProjectData$emp_title)
+# head(table(ProjectData$emp_title))
+# sum(ProjectData$emp_title == '') # Many blanks !
+# # This field should be re-processed
+# ## 6 - home_ownership
+# unique(ProjectData$home_ownership)
+# ProjectData$home_ownership <- as.factor(ProjectData$home_ownership)
+# ## 7 - verification_status
+# unique(ProjectData$verification_status)
+# ProjectData$verification_status <- as.factor(ProjectData$verification_status)
+# ## 8 - issue_d
+# unique(ProjectData$issue_d)
+# ProjectData$issue_d <- as.factor(ProjectData$issue_d)
+# # Maybe should be separated in issue_year and issue_month
+# ## 10 - pymnt_plan
+# unique(ProjectData$pymnt_plan)
+# ProjectData$pymnt_plan <- as.factor(ProjectData$pymnt_plan)
+# ## 11 - url
+# unique(ProjectData$url) # Too many modalities, keep it in character strings - Not to be used !
+# ## 12 - desc
+# unique(ProjectData$desc) # Too many modalities, keep it in character strings - Not to be used !
+# ## 13 - purpose 
+# unique(ProjectData$purpose)
+# ProjectData$purpose <- as.factor(ProjectData$purpose)
+# ## 14 - title
+# unique(ProjectData$title)
+# # Either should be re-processed or not to be used ! Or do a word count, i don't know
+# ## 15 - zip_code
+# unique(ProjectData$zip_code)
+# ProjectData$zip_code <- as.factor(ProjectData$zip_code)
+# ## 16 - addr_state
+# unique(ProjectData$addr_state)
+# ProjectData$addr_state <- as.factor(ProjectData$addr_state)
+# ## 17 - earliest_cr_line
+# unique(ProjectData$earliest_cr_line)
+# # Some missing Data
+# # Maybe should be separated into earliest_cr_line_month and earliest_cr_line_year
+# ProjectData$earliest_cr_line <- as.factor(ProjectData$earliest_cr_line)
+# ## 18 - initial_list_status
+# unique(ProjectData$initial_list_status)
+# ProjectData$initial_list_status <- as.factor(ProjectData$initial_list_status)
+# ## 19 - last_pymnt_d
+# unique(ProjectData$last_pymnt_d)
+# ProjectData$last_pymnt_d <- as.factor(ProjectData$last_pymnt_d)
+# # Some missing Data
+# # Maybe should be separated into last_pymnt_month and last_pymnt_year
+# ## 20 - next_pymnt_d
+# unique(ProjectData$next_pymnt_d)
+# # Some missing Data
+# # Maybe should be separated into next_pymnt_month and next_pymnt_year
+# ProjectData$next_pymnt_d <- as.factor(ProjectData$next_pymnt_d)
+# # 21 - last_credit_pull_d
+# unique(ProjectData$last_credit_pull_d)
+# # Some missing Data
+# # Maybe should be separated into last_credit_pull_month and last_credit_pull_year
+# ProjectData$last_credit_pull_d <- as.factor(ProjectData$last_credit_pull_d)
+# # 22 - application_type
+# unique(ProjectData$application_type)
+# ProjectData$application_type <- as.factor(ProjectData$application_type)
+# # 23 - verification_status_joint
+# unique(ProjectData$verification_status_joint)
+# ProjectData$verification_status_joint <- as.factor(ProjectData$verification_status_joint)
+# 
+# # Result Dataset
+# summary(ProjectData)
+```
 
-# You should decide what you want to do with categorical variables
-# 2017/01/24 : I removed from the list the variables you handled above
-######################################################################
+```{r eval = FALSE, echo=FALSE, comment=NA, warning=FALSE, message=FALSE,results='markup'}
 
-## 3 - sub_grade
-unique(ProjectData$sub_grade)
-ProjectData$sub_grade <- as.factor(ProjectData$sub_grade)
-## 4 - emp_title
-unique(ProjectData$emp_title)
-head(table(ProjectData$emp_title))
-sum(ProjectData$emp_title == '') # Many blanks !
-# This field should be re-processed
-## 6 - home_ownership
-unique(ProjectData$home_ownership)
-ProjectData$home_ownership <- as.factor(ProjectData$home_ownership)
-## 7 - verification_status
-unique(ProjectData$verification_status)
-ProjectData$verification_status <- as.factor(ProjectData$verification_status)
-## 8 - issue_d
-unique(ProjectData$issue_d)
-ProjectData$issue_d <- as.factor(ProjectData$issue_d)
-# Maybe should be separated in issue_year and issue_month
-## 10 - pymnt_plan
-unique(ProjectData$pymnt_plan)
-ProjectData$pymnt_plan <- as.factor(ProjectData$pymnt_plan)
-## 11 - url
-unique(ProjectData$url) # Too many modalities, keep it in character strings - Not to be used !
-## 12 - desc
-unique(ProjectData$desc) # Too many modalities, keep it in character strings - Not to be used !
-## 13 - purpose 
-unique(ProjectData$purpose)
-ProjectData$purpose <- as.factor(ProjectData$purpose)
-## 14 - title
-unique(ProjectData$title)
-# Either should be re-processed or not to be used ! Or do a word count, i don't know
-## 15 - zip_code
-unique(ProjectData$zip_code)
-ProjectData$zip_code <- as.factor(ProjectData$zip_code)
-## 16 - addr_state
-unique(ProjectData$addr_state)
-ProjectData$addr_state <- as.factor(ProjectData$addr_state)
-## 17 - earliest_cr_line
-unique(ProjectData$earliest_cr_line)
-# Some missing Data
-# Maybe should be separated into earliest_cr_line_month and earliest_cr_line_year
-ProjectData$earliest_cr_line <- as.factor(ProjectData$earliest_cr_line)
-## 18 - initial_list_status
-unique(ProjectData$initial_list_status)
-ProjectData$initial_list_status <- as.factor(ProjectData$initial_list_status)
-## 19 - last_pymnt_d
-unique(ProjectData$last_pymnt_d)
-ProjectData$last_pymnt_d <- as.factor(ProjectData$last_pymnt_d)
-# Some missing Data
-# Maybe should be separated into last_pymnt_month and last_pymnt_year
-## 20 - next_pymnt_d
-unique(ProjectData$next_pymnt_d)
-# Some missing Data
-# Maybe should be separated into next_pymnt_month and next_pymnt_year
-ProjectData$next_pymnt_d <- as.factor(ProjectData$next_pymnt_d)
-# 21 - last_credit_pull_d
-unique(ProjectData$last_credit_pull_d)
-# Some missing Data
-# Maybe should be separated into last_credit_pull_month and last_credit_pull_year
-ProjectData$last_credit_pull_d <- as.factor(ProjectData$last_credit_pull_d)
-# 22 - application_type
-unique(ProjectData$application_type)
-ProjectData$application_type <- as.factor(ProjectData$application_type)
-# 23 - verification_status_joint
-unique(ProjectData$verification_status_joint)
-ProjectData$verification_status_joint <- as.factor(ProjectData$verification_status_joint)
+ProjectDataNumericWithoutStatus <- ProjectDataNumeric[, -which(names(ProjectDataNumeric) %in% c('loan_statusCharged.Off'))]
+res.pca = PCA(ProjectDataNumericWithoutStatus, scale.unit=TRUE, ncp=5)
 
-# Result Dataset
-summary(ProjectData)
+# Information embedded by principal components
+barplot(res.pca$eig[,2])
 
 ```
 
-### 4.Dimensionality Reduction
+```{r eval = FALSE, echo=FALSE, comment=NA, warning=FALSE, message=FALSE,results='markup'}
+
+# How the 2 first principal components are constructed by the original variables
+plot(res.pca,choix="var",axes=c(1,2))
+
+```
+
+```{r eval = FALSE, echo=FALSE, comment=NA, warning=FALSE, message=FALSE,results='markup'}
+
+# How the 2 first principal components are constructed by the original variables
+print(res.pca$var$coord)
+
+```
+
+Lastly, to visualise the correlation between attributes and test for reasonableness, we run a correlation test for all 11 attributes. 
+
+```{r eval = FALSE, echo=FALSE, comment=NA, warning=FALSE, message=FALSE,results='markup'}
+
+#correlation matrix to explore data
+acor <- cor(ProjectDataNumeric)
+corrplot(acor, type="lower", tl.srt=45)
+```
+
+### 5.Split Dataset into Estimation, Validation and Test Data (Step 6)
+
+In this section, we set the dependent variable as Loan Status witha Binary Output of 1 if Delinquiet, 0 otherwise
+Independent variables would be the remaining 9 attributes (i.e all others except ID)
+
+We also define the proportion of Estimation Data as 80% of the ProjectDataScaled (Treated Dataset from #4), Validation Data as 10% and Test Data as 10%. 
+
+Finally we randomly sampled the ProjectDataScaled to obtain the 3 sets of data as mentioned above. 
 
 ```{r eval = FALSE, echo=FALSE, comment=NA, warning=FALSE, message=FALSE,results='markup'}
 
@@ -283,6 +406,10 @@ ggplot(melt(cbind.data.frame(n=1:nrow(x1), x1), id="n"), aes(x=n, y=value, colou
 set_swatch(swatch.default)
 ```
 
+### 6. Apply Classification Tree method on Estimation Dataset and check against Validation dataset (Iterate if required) (Step 7)
+
+After distinguishing 3 types of Dataset from #6, we now grow a Classification Tree with the Estimation Data. We first tried to run the Classification Tree with a cp factor of 0.05 but soon discovered that a more granular level of cp is required and we amend to 0.0015 and we cap the number of branches to 6. After a couple of iterations, we generated the final Classification Tree helps us understand attributes that would indicate probability of default.  
+
 ```{r}
 # just name the variables numerically so that they look ok on the tree plots
 independent_variables_nolabel = paste("IV", 1:length(independent_variables), sep="")
@@ -311,10 +438,13 @@ rpart.plot(CART_tree)
 
 ```{r}
 CART_tree_large<-rpart(formula, data=estimation_data_nolabel, method="class", control=rpart.control(cp=0.00001, maxdepth=6, minbucket = 10))
-rpart.plot(CART_tree_large)
+rpart.plot(CART_tree)
 ```
 
+
 ```{r}
+#Kailing's Comment: Do you think we should skip Row 282 to 386? Because these seem to be codes to illustrate the probablities are calculated for 1st X observation of the Estimation Dataset (Row 283-322) and also apply another alternative method of Logistic Regression to determine the coefficients (Row 322-386). 
+
 # Let's first calculate all probabilites for the estimation, validation, and test data
 estimation_Probability_class1_tree<-predict(CART_tree_anova, estimation_data_nolabel)[,2]
 estimation_Probability_class1_tree_large<-predict(CART_tree_large_anova, estimation_data_nolabel)[,2]
@@ -342,14 +472,27 @@ Classification_Table_large=rbind(validation_data[,dependent_variable],validation
 rownames(Classification_Table_large)<-c("Actual Class","Probability of Class 1")
 colnames(Classification_Table_large)<- paste("Obs", 1:ncol(Classification_Table_large), sep=" ")
 
+show_data = data.frame(round(Classification_Table,2))
+show_data = show_data[,1:min(max_data_report,ncol(show_data))]
+row<-rownames(show_data)
+dfnew<-cbind(row,show_data)
+change<-colnames(dfnew)
+change[1]<-"Classification Table"
+colnames (dfnew)<-change
+m1<-gvisTable(dfnew,options=list(showRowNumber=TRUE,width=1220, height=140,allowHTML=TRUE,page='disable'))
+print(m1,'chart')
+
 knitr::kable(head(t(round(Classification_Table,2)), max_data_report))
 ```
+
 
 ```{r}
 formula_log=paste(colnames(estimation_data[,dependent_variable,drop=F]),paste(Reduce(paste,sapply(head(independent_variables,-1), function(i) paste(colnames(estimation_data)[i],"+",sep=""))),colnames(estimation_data)[tail(independent_variables,1)],sep=""),sep="~")
 
 logreg_solution <- glm(formula_log, family=binomial(link="logit"),  data=estimation_data)
-log_coefficients <- round(summary(logreg_solution)$coefficients,1)
+
+log_coefficients = round(summary(logreg_solution)$coefficients,1)
+print(xtable(log_coefficients,caption="Logistic Regression: Estimated Coefficients" , digits=1,),type="html",html.table.attributes = "class='table table-striped table-hover table-bordered'",caption.placement="top",comment = FALSE,include.rownames = TRUE)
 
 knitr::kable(round(log_coefficients,2))
 ```
@@ -367,6 +510,16 @@ test_prediction_class_log=1*as.vector(test_Probability_class1_log > Probability_
 Classification_Table=rbind(validation_data[,dependent_variable],validation_Probability_class1_log)
 rownames(Classification_Table)<-c("Actual Class","Probability of Class 1")
 colnames(Classification_Table)<- paste("Obs", 1:ncol(Classification_Table), sep=" ")
+
+show_data = data.frame(round(Classification_Table,2))
+show_data = show_data[,1:min(max_data_report,ncol(show_data))]
+row<-rownames(show_data)
+dfnew<-cbind(row,show_data)
+change<-colnames(dfnew)
+change[1]<-"Classification Table"
+colnames (dfnew)<-change
+m1<-gvisTable(dfnew,options=list(showRowNumber=TRUE,width=1220, height=140,allowHTML=TRUE,page='disable'))
+print(m1,'chart')
 
 knitr::kable(head(t(round(Classification_Table,2)), max_data_report))
 ```
@@ -396,8 +549,12 @@ rownames(Importance_table) <- rownames(log_importance)
 knitr::kable(round(Importance_table,2))
 ```
 
-### 5.Clustering and Segmentation
+### 7.Summarise implication on Lending Club Business Decisions based on Classification Tree's output
+The Classification Tree applied based on Estimation Data shows that 
+Customers who are likely to default tend to 
+a)	have an annual income more than mean + 0.22 x sd of Annual Income: 74,820 + 0.22 x 58005.47 = $87,581
+b)	have a loan grade of more than mean + 0.54 x sd of Loan Grade: 2.786 + 0.54 x 1.309988 = 3.4. This is equivalent to a Grade D or Worse
+c)	which translate to an interest rate between mean -0.46 x sd of Interest Rate  and mean + sd x 0.54 of Interest rate = 13.68% - 0.46 x 4.362813% to 13.68% + 0.54 x 4.362813% = 11.67% to 16.04%
+d)	and borrow an amount of more than mean + 0.97 x sd of Loan Amount = 14,479 + 0.97 x 8,311.429 = $22,541
 
-### 6. Results 
 
->>>>>>> 7664b6275553d5ba40165c41ff18eb644596ceb4
