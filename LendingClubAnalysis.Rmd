@@ -16,6 +16,8 @@ install.packages("corrplot")
 install.packages("rpart.plot")
 install.packages("fastICA")
 install.packages("FactoMineR")
+install.packages("googleVis")
+install.packages("xtable")
 
 library("ggthemr")
 library("knitr")
@@ -28,6 +30,8 @@ library("rpart.plot")
 library("caret")
 library("FactoMineR")
 library("fastICA")
+library("googleVis")
+library("xtable")
 ```
 
 Business Problem: Assessing credit worthiness of customers in Lending Club and their probability of defaulting.
@@ -76,11 +80,15 @@ The team applied judgement based on both our understanding of Lending Club's bus
 "InterestRate": Annual Interest Rate on the loan 
 
 ```{r eval = FALSE, echo=FALSE, comment=NA, warning=FALSE, message=FALSE,results='markup'}
-ProjectData<- read.csv(file = "Data/loan.csv", header = TRUE, sep=",", stringsAsFactors = FALSE, nrows=500000)
+ProjectData<- read.csv(file = "Data/loan.csv", header = TRUE, sep=",", stringsAsFactors = FALSE, nrows=50000)
 # OBoulant : i added the "stringsAsFactors = FALSE", because I want to look at the variables represented by character strings
 # SIsaacs: I added "nrows = 10000" to work with a smaller more manageable data set
 # print(colnames(ProjectData))
 # summary(ProjectData)
+
+ProjectDataClean <- ProjectData$id
+ProjectDataClean <- cbind(ProjectDataClean, ProjectData$loan_status, ProjectData$loan_amnt, ProjectData$term, ProjectData$annual_inc, ProjectData$emp_length, ProjectData$pub_rec, ProjectData$open_acc, ProjectData$delinq_2yrs, ProjectData$grade, ProjectData$int_rate)
+colnames(ProjectDataClean) <- c("ID", "LoanStatus", "LoanAmount", "LoanTerm", "AnnualIncome", "EmploymentLength", "PublicRecords", "NumberCreditLines", "DelinquencyPrior2Years", "LoanGrade", "InterestRate")
 ```
 
 ### 4. Treatment of Dataset (Convert to Metric, Cleanse & Scale) (Step 4 - 5)
@@ -276,25 +284,25 @@ This led us to consider the 2nd interpretation where these factors are scaled. W
 
 ```{r eval = FALSE, echo=FALSE, comment=NA, warning=FALSE, message=FALSE,results='markup'}
 
-ProjectDataNumericWithoutStatus <- ProjectDataNumeric[, -which(names(ProjectDataNumeric) %in% c('loan_statusCharged.Off'))]
-res.pca = PCA(ProjectDataNumericWithoutStatus, scale.unit=TRUE, ncp=5)
-
-# Information embedded by principal components
-barplot(res.pca$eig[,2])
-
-```
-
-```{r eval = FALSE, echo=FALSE, comment=NA, warning=FALSE, message=FALSE,results='markup'}
-
-# How the 2 first principal components are constructed by the original variables
-plot(res.pca,choix="var",axes=c(1,2))
+# ProjectDataNumericWithoutStatus <- ProjectDataNumeric[, -which(names(ProjectDataNumeric) %in% c('loan_statusCharged.Off'))]
+# res.pca = PCA(ProjectDataNumericWithoutStatus, scale.unit=TRUE, ncp=5)
+# 
+# # Information embedded by principal components
+# barplot(res.pca$eig[,2])
 
 ```
 
 ```{r eval = FALSE, echo=FALSE, comment=NA, warning=FALSE, message=FALSE,results='markup'}
 
-# How the 2 first principal components are constructed by the original variables
-print(res.pca$var$coord)
+# # How the 2 first principal components are constructed by the original variables
+# plot(res.pca,choix="var",axes=c(1,2))
+
+```
+
+```{r eval = FALSE, echo=FALSE, comment=NA, warning=FALSE, message=FALSE,results='markup'}
+
+# # How the 2 first principal components are constructed by the original variables
+# print(res.pca$var$coord)
 
 ```
 
@@ -302,9 +310,9 @@ Lastly, to visualise the correlation between attributes and test for reasonablen
 
 ```{r eval = FALSE, echo=FALSE, comment=NA, warning=FALSE, message=FALSE,results='markup'}
 
-#correlation matrix to explore data
-acor <- cor(ProjectDataNumeric)
-corrplot(acor, type="lower", tl.srt=45)
+# #correlation matrix to explore data
+# acor <- cor(ProjectDataNumeric)
+# corrplot(acor, type="lower", tl.srt=45)
 ```
 
 ### 5.Split Dataset into Estimation, Validation and Test Data (Step 6)
@@ -446,8 +454,8 @@ rpart.plot(CART_tree)
 #Kailing's Comment: Do you think we should skip Row 282 to 386? Because these seem to be codes to illustrate the probablities are calculated for 1st X observation of the Estimation Dataset (Row 283-322) and also apply another alternative method of Logistic Regression to determine the coefficients (Row 322-386). 
 
 # Let's first calculate all probabilites for the estimation, validation, and test data
-estimation_Probability_class1_tree<-predict(CART_tree_anova, estimation_data_nolabel)[,2]
-estimation_Probability_class1_tree_large<-predict(CART_tree_large_anova, estimation_data_nolabel)[,2]
+estimation_Probability_class1_tree<-predict(CART_tree, estimation_data_nolabel)[,2]
+estimation_Probability_class1_tree_large<-predict(CART_tree_large, estimation_data_nolabel)[,2]
 
 validation_Probability_class1_tree<-predict(CART_tree, validation_data_nolabel)[,2]
 validation_Probability_class1_tree_large<-predict(CART_tree_large, validation_data_nolabel)[,2]
