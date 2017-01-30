@@ -5,7 +5,7 @@ date: "1/12/2017"
 output: html_document
 ---
 
-```{r setup, include=FALSE}
+```{r eval = FALSE, echo=FALSE, comment=NA, warning=FALSE, message=FALSE,results='markup'}
 knitr::opts_chunk$set(echo = TRUE)
 
 # In order to install ggthemr, you have to load devtools and install it from github. For me (OBoulant), this command did not worked
@@ -19,19 +19,19 @@ install.packages("FactoMineR")
 install.packages("googleVis")
 install.packages("xtable")
 
-library("ggthemr")
-library("knitr")
-library("rpart")
-library("corrplot")
-library("reshape2")
-library("rpart.plot")
-library("reshape2")
-library("rpart.plot")
-library("caret")
-library("FactoMineR")
-library("fastICA")
-library("googleVis")
-library("xtable")
+library(ggthemr)
+library(knitr)
+library(rpart)
+library(corrplot)
+library(reshape2)
+library(rpart.plot)
+library(reshape2)
+library(rpart.plot)
+library(caret)
+library(FactoMineR)
+library(fastICA)
+library(googleVis)
+library(xtable)
 ```
 
 Business Problem: Assessing credit worthiness of customers in Lending Club and their probability of defaulting.
@@ -71,7 +71,7 @@ The team applied judgement based on both our understanding of Lending Club's bus
 "LoanStatus": Whether the loan in question has been Charged Off (1=Delinquent), Fully Paid (0), Current (0 =still outstanding)
 "LoanAmount": Amount of loan issued
 "LoanTerm": Duration of loan, either 36 months or 60 months
-"AnnualIncome": Annual income of the Borrower
+"AnnualIncome": Annual income of the borrower
 "EmploymentLength": Employment length in years. Possible values are between 0 and 10 where 0 means less than one year and 10 means ten or more years. 
 "PublicRecords": Number of derogatory public records
 "NumberCreditLines": The number of open credit lines in the borrower's credit file
@@ -79,7 +79,7 @@ The team applied judgement based on both our understanding of Lending Club's bus
 "LoanGrade": Lending Club's assigned loan grade
 "InterestRate": Annual Interest Rate on the loan 
 
-```{r eval = FALSE, echo=FALSE, comment=NA, warning=FALSE, message=FALSE,results='markup'}
+```{r eval = TRUE, echo=FALSE, comment=NA, warning=FALSE, message=FALSE,results='markup'}
 ProjectData<- read.csv(file = "Data/loan.csv", header = TRUE, sep=",", stringsAsFactors = FALSE, nrows=50000)
 # OBoulant : i added the "stringsAsFactors = FALSE", because I want to look at the variables represented by character strings
 # SIsaacs: I added "nrows = 10000" to work with a smaller more manageable data set
@@ -100,7 +100,7 @@ Data is also:
 a) cleansed to remove any "NA" fields using 'na.omit'
 b) normalised for fields "LoanAmount", "LoanTerm", "Annual Income", "EmploymentLength", "NumberofCreditLines", "DelinquencyPiror2Years", "LoanGrade", "InterestRate" with mean 0 and standard deviation 1.
 
-```{r eval = FALSE, echo=FALSE, comment=NA, warning=FALSE, message=FALSE,results='markup'}
+```{r eval = TRUE, echo=FALSE, comment=NA, warning=FALSE, message=FALSE,results='markup'}
 
 #Convert the data to numbers
 ProjectDataClean[,"LoanStatus"] <- replace(ProjectDataClean[,"LoanStatus"], ProjectDataClean[,"LoanStatus"]=="Charged Off", 1)
@@ -324,7 +324,7 @@ We also define the proportion of Estimation Data as 80% of the ProjectDataScaled
 
 Finally we randomly sampled the ProjectDataScaled to obtain the 3 sets of data as mentioned above. 
 
-```{r eval = FALSE, echo=FALSE, comment=NA, warning=FALSE, message=FALSE,results='markup'}
+```{r eval=TRUE, echo=FALSE, comment=NA, warning=FALSE, message=FALSE,results='markup'}
 
 dependent_variable<-2
 independent_variables<-c(3:11)
@@ -352,7 +352,7 @@ Profit_Matrix = matrix(c(actual_1_predict_1, actual_0_predict_1, actual_1_predic
 colnames(Profit_Matrix)<- c("Predict 1", "Predict 0")
 rownames(Profit_Matrix) <- c("Actual 1", "Actual 0")
 test_data_percent = 100-estimation_data_percent-validation_data_percent
-CART_control = rpart.control(cp = CART_cp)
+CART_control = rpart::rpart.control(cp = CART_cp)
 
 if (random_sampling){
   estimation_data_ids=sample.int(nrow(ProjectDataScaled),floor(estimation_data_percent*nrow(ProjectDataScaled)/100))
@@ -372,7 +372,7 @@ test_data=ProjectDataScaled[test_data_ids,]
 
 ```
 
-```{r eval = TRUE, echo=FALSE, comment=NA, warning=FALSE, message=FALSE,results='markup'}
+```{r eval=TRUE, echo=FALSE, comment=NA, warning=FALSE, message=FALSE, results='markup'}
 class_percentages=matrix(c(sum(estimation_data[,dependent_variable]==1),sum(estimation_data[,dependent_variable]==0)), nrow=1); colnames(class_percentages)<-c("Class 1", "Class 0")
 rownames(class_percentages)<-"# of Observations"
 knitr::kable(class_percentages)
@@ -400,18 +400,18 @@ colnames(x0) <- 1:ncol(x0)
 colnames(x1) <- 1:ncol(x1)
 
 # OBoulant : had to add the following line :
-ggthemr('dust')
-swatch.default <- as.character(swatch())
-set_swatch(c(swatch.default[1], colorRampPalette(RColorBrewer::brewer.pal(12, "Paired"))(ncol(x0))))
-ggplot(melt(cbind.data.frame(n=1:nrow(x0), x0), id="n"), aes(x=n, y=value, colour=variable)) + geom_boxplot(fill="#FFFFFF", size=0.66, position=position_dodge(1.1*nrow(x0))) + coord_cartesian(ylim=c(-10,10)) # OBoulant : i added the y axis limits
-set_swatch(swatch.default)
+ggthemr::ggthemr('dust')
+swatch.default <- as.character(ggthemr::swatch())
+ggthemr::set_swatch(c(swatch.default[1], colorRampPalette(RColorBrewer::brewer.pal(12, "Paired"))(ncol(x0))))
+ggplot2::ggplot(reshape2::melt(cbind.data.frame(n=1:nrow(x0), x0), id="n"), ggplot2::aes(x=n, y=value, colour=variable)) + ggplot2::geom_boxplot(fill="#FFFFFF", size=0.66, position=ggplot2::position_dodge(1.1*nrow(x0))) + ggplot2::coord_cartesian(ylim=c(-10,10)) # OBoulant : i added the y axis limits
+ggthemr::set_swatch(swatch.default)
 ```
 
 ```{r, fig.height=4.5}
-swatch.default <- as.character(swatch())
-set_swatch(c(swatch.default[1], colorRampPalette(RColorBrewer::brewer.pal(12, "Paired"))(ncol(x1))))
-ggplot(melt(cbind.data.frame(n=1:nrow(x1), x1), id="n"), aes(x=n, y=value, colour=variable)) + geom_boxplot(fill="#FFFFFF", size=0.66, position=position_dodge(1.1*nrow(x1))) + coord_cartesian(ylim=c(-10,10)) # OBoulant : i added the y axis limits
-set_swatch(swatch.default)
+swatch.default <- as.character(ggthemr::swatch())
+ggthemr::set_swatch(c(swatch.default[1], colorRampPalette(RColorBrewer::brewer.pal(12, "Paired"))(ncol(x1))))
+ggplot2::ggplot(reshape2::melt(cbind.data.frame(n=1:nrow(x1), x1), id="n"), ggplot2::aes(x=n, y=value, colour=variable)) + ggplot2::geom_boxplot(fill="#FFFFFF", size=0.66, position=ggplot2::position_dodge(1.1*nrow(x1))) + ggplot2::coord_cartesian(ylim=c(-10,10)) # OBoulant : i added the y axis limits
+ggthemr::set_swatch(swatch.default)
 ```
 
 ### 6. Apply Classification Tree method on Estimation Dataset and check against Validation dataset (Iterate if required) (Step 7)
@@ -440,13 +440,13 @@ validation_data = data.frame(validation_data)
 test_data = data.frame(test_data)
 
 formula=paste(colnames(estimation_data)[dependent_variable],paste(Reduce(paste,sapply(head(independent_variables_nolabel,-1), function(i) paste(i,"+",sep=""))),tail(independent_variables_nolabel,1),sep=""),sep="~")
-CART_tree<-rpart(formula, data=estimation_data_nolabel, method="class", control=CART_control)
-rpart.plot(CART_tree)
+CART_tree<-rpart::rpart(formula, data=estimation_data_nolabel, method="class", control=CART_control)
+rpart.plot::rpart.plot(CART_tree)
 ```
 
 ```{r}
-CART_tree_large<-rpart(formula, data=estimation_data_nolabel, method="class", control=rpart.control(cp=0.00001, maxdepth=6, minbucket = 10))
-rpart.plot(CART_tree)
+CART_tree_large<-rpart::rpart(formula, data=estimation_data_nolabel, method="class", control=rpart::rpart.control(cp=0.00001, maxdepth=6, minbucket = 10))
+rpart.plot::rpart.plot(CART_tree)
 ```
 
 
@@ -487,7 +487,7 @@ dfnew<-cbind(row,show_data)
 change<-colnames(dfnew)
 change[1]<-"Classification Table"
 colnames (dfnew)<-change
-m1<-gvisTable(dfnew,options=list(showRowNumber=TRUE,width=1220, height=140,allowHTML=TRUE,page='disable'))
+m1<-googleVis::gvisTable(dfnew,options=list(showRowNumber=TRUE,width=1220, height=140,allowHTML=TRUE,page='disable'))
 print(m1,'chart')
 
 knitr::kable(head(t(round(Classification_Table,2)), max_data_report))
@@ -500,7 +500,7 @@ formula_log=paste(colnames(estimation_data[,dependent_variable,drop=F]),paste(Re
 logreg_solution <- glm(formula_log, family=binomial(link="logit"),  data=estimation_data)
 
 log_coefficients = round(summary(logreg_solution)$coefficients,1)
-print(xtable(log_coefficients,caption="Logistic Regression: Estimated Coefficients" , digits=1,),type="html",html.table.attributes = "class='table table-striped table-hover table-bordered'",caption.placement="top",comment = FALSE,include.rownames = TRUE)
+print(xtable::xtable(log_coefficients,caption="Logistic Regression: Estimated Coefficients" , digits=1,),type="html",html.table.attributes = "class='table table-striped table-hover table-bordered'",caption.placement="top",comment = FALSE,include.rownames = TRUE)
 
 knitr::kable(round(log_coefficients,2))
 ```
@@ -526,7 +526,7 @@ dfnew<-cbind(row,show_data)
 change<-colnames(dfnew)
 change[1]<-"Classification Table"
 colnames (dfnew)<-change
-m1<-gvisTable(dfnew,options=list(showRowNumber=TRUE,width=1220, height=140,allowHTML=TRUE,page='disable'))
+m1<-googleVis::gvisTable(dfnew,options=list(showRowNumber=TRUE,width=1220, height=140,allowHTML=TRUE,page='disable'))
 print(m1,'chart')
 
 knitr::kable(head(t(round(Classification_Table,2)), max_data_report))
