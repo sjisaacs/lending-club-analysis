@@ -40,26 +40,26 @@ Data set: https://www.kaggle.com/wendykan/lending-club-loan-data
 
 ### 1.Introduction to the Business Problem
 
-Lending Club is the world’s largest online marketplace connecting borrowers and investors.They operate at a lower cost than traditional bank lending programs and pass the savings on to borrowers in the form of lower rates and to investors in the form of solid returns.
+Lending Club is the world’s largest online marketplace connecting borrowers and investors. They operate at a lower cost than traditional bank lending programs and pass the savings on to borrowers in the form of lower rates and to investors in the form of solid returns.
 Source: https://www.lendingclub.com/
 
-This project aims to analyse Lending Club's issued loans over a 9 year period (2007-2015) and identify early indicators that could predict a customer's probability of defaulting. The insights obtained could help Lending Club to 
+This project aims to analyse Lending Club's issued loans over a 9 year period (2007-2015) and identify early indicators that could predict a customer's probability of defaulting. The insights obtained could help Lending Club to:
 a) Develop customer profiles with High vs Low Default Risk
 b) Design differentiated credit approval processes for different customer segments (e.g faster approval time, minimal security for low risk customers)
 
-The outcome of the above actions has the potential to shape Lending Club's Product Offering, attract the right kind of borrowers and providing investors with stronger returns, thereby improving its own business performance. 
+The outcome of the above actions has the potential to shape Lending Club's product offering, attract the right kind of borrowers and provide investors with stronger returns, thereby improving its own business performance. 
 
 ### 2.Process to solve the Business Problem
 
-For the purpose of this analysis, We will follow the below process:      
-1. Understand Lending Club Business Model & Data Set  
-2. Generate Hypothesis on borrower's attributes contributing to probability of default 
-3. Idenfity relevant attributes from dataset
-4. Clean the selected data to remove any N/A & Outliers
-5. Test correlation of selected data to understand their relative dependency
-6. Split dataset into 80% estimation (training) , 10% validation and 10% testing dataset    
-7. Apply Classification Tree method on Testing Dataset and check against Validation dataset (Iterate if required)    
-8. Summarise implication on Lending Club Business Decisions based on Classification Tree's output
+For the purpose of this analysis, we will follow the below process:      
+1. Understand Lending Club's Business Model & Data Set     
+2. Generate hypothesis on which borrower attributes contribute to probability of default     
+3. Idenfity relevant attributes from dataset     
+4. Clean the selected data to remove any NA & outliers     
+5. Test correlation of selected data to understand their relative dependency    
+6. Split dataset into 80% estimation (training) , 10% validation and 10% testing       
+7. Apply classification tree method on testing dataset and check against validation dataset (iterate if required)    
+8. Summarise implication on Lending Club business decisions based on classification tree's output    
 
 ### 3.Generate Hypothesis on Borrower's attributes & Identify attributes from Dataset (Step 2-3)
 
