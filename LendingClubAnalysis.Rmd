@@ -53,7 +53,7 @@ The outcome of the above actions has the potential to shape Lending Club's produ
 
 For the purpose of this analysis, we will follow the below process:      
 1. Understand Lending Club's Business Model & Data Set     
-2. Generate hypothesis on which borrower attributes contribute to probability of default     
+2. Generate hypothesis on which borrower characteritics contribute to probability of default     
 3. Idenfity relevant attributes from dataset     
 4. Clean the selected data to remove any NA & outliers     
 5. Test correlation of selected data to understand their relative dependency    
@@ -61,11 +61,19 @@ For the purpose of this analysis, we will follow the below process:
 7. Apply classification tree method on testing dataset and check against validation dataset (iterate if required)    
 8. Summarise implication on Lending Club business decisions based on classification tree's output    
 
-### 3.Generate Hypothesis on Borrower's attributes & Identify attributes from Dataset (Step 2-3)
+```{r eval = TRUE, echo=FALSE, comment=NA, warning=FALSE, message=FALSE,results='markup'}
+ProjectData<- read.csv(file = "Data/loan.csv", header = TRUE, sep=",", stringsAsFactors = FALSE, nrows=500000)
+# OBoulant : i added the "stringsAsFactors = FALSE", because I want to look at the variables represented by character strings
+# SIsaacs: I added "nrows = 50000" to work with a smaller more manageable data set
+# print(colnames(ProjectData))
+# summary(ProjectData)
+```
 
-There are 78 fields (columns) in Lending Club's dataset with many fields capturing irrelevant data or duplicative data measuring similar information. An example of irrelevant data would be "URL" of customer's profile. An example of data measuring similar information would be "Loan Grade" & "SubGrade" where "Loan Grade" rates the quality of the Loan & "SubGrade" is a more granular level of Loan Grade. 
+### 3.Generate hypothesis on which borrower characteritics contribute to probability of default    
 
-The team applied judgement based on both our understanding of Lending Club's business and our goal within this analysis, in order to identify 11 fields that are particularly relevant for this analysis:
+There are 74 fields (columns) in Lending Club's dataset with many fields capturing irrelevant data or duplicative data measuring similar information. An example of irrelevant data would be "URL" of customer's profile. An example of data measuring similar information would be "Loan Grade" & "SubGrade" where "Loan Grade" rates the quality of the Loan & "SubGrade" is a more granular level of Loan Grade. 
+
+The team applied judgement based on both our understanding of Lending Club's business and our goal within this analysis, in order to identify 11 key fields that are particularly relevant for this analysis:
 
 "ID": Unique identification number tagged to the loan
 "LoanStatus": Whether the loan in question has been Charged Off (1=Delinquent), Fully Paid (0), Current (0 =still outstanding)
@@ -80,12 +88,6 @@ The team applied judgement based on both our understanding of Lending Club's bus
 "InterestRate": Annual Interest Rate on the loan 
 
 ```{r eval = TRUE, echo=FALSE, comment=NA, warning=FALSE, message=FALSE,results='markup'}
-ProjectData<- read.csv(file = "Data/loan.csv", header = TRUE, sep=",", stringsAsFactors = FALSE, nrows=50000)
-# OBoulant : i added the "stringsAsFactors = FALSE", because I want to look at the variables represented by character strings
-# SIsaacs: I added "nrows = 10000" to work with a smaller more manageable data set
-# print(colnames(ProjectData))
-# summary(ProjectData)
-
 ProjectDataClean <- ProjectData$id
 ProjectDataClean <- cbind(ProjectDataClean, ProjectData$loan_status, ProjectData$loan_amnt, ProjectData$term, ProjectData$annual_inc, ProjectData$emp_length, ProjectData$pub_rec, ProjectData$open_acc, ProjectData$delinq_2yrs, ProjectData$grade, ProjectData$int_rate)
 colnames(ProjectDataClean) <- c("ID", "LoanStatus", "LoanAmount", "LoanTerm", "AnnualIncome", "EmploymentLength", "PublicRecords", "NumberCreditLines", "DelinquencyPrior2Years", "LoanGrade", "InterestRate")
@@ -445,7 +447,7 @@ rpart.plot::rpart.plot(CART_tree)
 ```
 
 ```{r}
-CART_tree_large<-rpart::rpart(formula, data=estimation_data_nolabel, method="class", control=rpart::rpart.control(cp=0.00001, maxdepth=6, minbucket = 10))
+CART_tree_large<-rpart::rpart(formula, data=estimation_data_nolabel, method="class", control=rpart::rpart.control(cp=0.00000001, maxdepth=6, minbucket = 2))
 rpart.plot::rpart.plot(CART_tree)
 ```
 
